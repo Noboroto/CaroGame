@@ -135,9 +135,5 @@ struct Point
 
 int main()
 {
-	Point abc = Point(5, 5);
-	abc.drawPoint();
-	Point xyz = Point(5, 10);
-	xyz.drawPoint();
 	return 0;
 }
