@@ -22,18 +22,10 @@ const int MAX_CHAR_DISPLAY = 9;
 const int MID_NAME_DISPLAY = MAX_CHAR_DISPLAY / 2;
 const int MAX_ACCOUNT = 100;
 
-//DISPLAY CHARACTER
-const char DEFAULT_CHAR = '?';
-const char BLOCK_CHAR = 'B';
-const char UP_CHAR = '^';
-const char DOWN_CHAR = 'v';
-const char LEFT_CHAR = '<';
-const char RIGHT_CHAR = '>';
-const char START_CHAR = 'S';
-const char FINISH_CHAR = 'F';
 
 int winnerID = -1;
 int UserInputInt_ = 0;
+HANDLE ScreenHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 
 struct Player
 {
@@ -85,8 +77,67 @@ void saveAccounts()
 	file.close();
 }
 
+struct Point
+{
+	int Col;
+	int Row;
+	int VerticalLink = 0;
+	int HorizontalLink = 0;
+	int MainCross = 0;
+	int ExtraCross = 0;
+	Point(int col = 0, int row = 0)
+	{
+		Col = col;
+		Row = row;
+	}
+
+	void drawHorizontalLine()
+	{
+		cout << ' ';
+		const int DISPLAY_SIZE = MAX_CHAR_DISPLAY;
+		for (int i = 0; i < DISPLAY_SIZE; ++i)
+		{
+			cout << '-';
+		}
+		cout << ' ';
+	}
+	void drawBlankVerticalLin()
+	{
+		cout << '|';
+		for (int i = 0; i < MAX_CHAR_DISPLAY; ++i)
+		{
+			cout << ' ';
+		}
+		cout << '|';
+	}
+	void drawPoint()
+	{
+		COORD Position;
+		Position.X = Col;
+		Position.Y = Row;
+		SetConsoleCursorPosition(ScreenHandle, Position);
+		drawHorizontalLine();
+		Position.Y++;
+		SetConsoleCursorPosition(ScreenHandle, Position);
+		drawBlankVerticalLin();
+		Position.Y++;
+		SetConsoleCursorPosition(ScreenHandle, Position);
+		drawBlankVerticalLin();
+		Position.Y++;
+		SetConsoleCursorPosition(ScreenHandle, Position);
+		drawBlankVerticalLin();
+		Position.Y++;
+		SetConsoleCursorPosition(ScreenHandle, Position);
+		drawHorizontalLine();
+	}
+};
+
+
 int main()
 {
-
+	Point abc = Point(5, 5);
+	abc.drawPoint();
+	Point xyz = Point(5, 10);
+	xyz.drawPoint();
 	return 0;
 }
