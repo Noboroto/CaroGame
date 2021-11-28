@@ -22,7 +22,7 @@ const int KEY_RIGHT = 77;
 const int MAX_ROW = 12;
 const int MAX_COL = 12;
 const int SPACE_BETWEEN_POINT = 2;
-const int NAME_DISPLAY = 7;
+const int NAME_DISPLAY = 8;
 const int COL_SIZE = 9;
 const int ROW_SIZE = 5;
 const int MAX_ACCOUNT = 100;
@@ -32,6 +32,7 @@ const int WINDOWS_HEGHT = ROW_SIZE * (MAX_ROW - 2) + 2;
 
 int winnerID = -1;
 int UserInputInt_ = 0;
+bool isSingleMode = false;
 HANDLE OutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 HANDLE InHamdle = GetStdHandle(STD_INPUT_HANDLE);
 COORD CursorPosition;
@@ -130,6 +131,12 @@ void changeWindows(int height, int width)
 	ShowScrollBar(hWnd, SB_BOTH, false);
 }
 
+void inputCharArray(char c[], int max)
+{
+	cin.get(c, max);
+	if (cin) cin.ignore(INT_MAX, '\n');
+}
+
 struct Point
 {
 	int DisplayCol;
@@ -184,7 +191,7 @@ struct Map
 	char Player[2][NAME_DISPLAY];
 	int RowSize = 3;
 	int ColSize = 3;
-	int WiningMove = 3;
+	int TurnCounter = 0;
 	int TieCounter;
 
 	int CurrentCol = 1;
@@ -237,12 +244,32 @@ struct Map
 		CurrentRow = DesRow;
 	}
 
+	void inputPlayerName(int id)
+	{
+		moveCursor(RowSize * ROW_SIZE, 0);
+		cout << "Please type player " << (id + 1) << " symbol (max: 7 characters) ";
+		showCursor(true);
+		inputCharArray(Player[id], NAME_DISPLAY);
+		int n = strlen(Player[id]);
+		if (n < NAME_DISPLAY - 1)
+		{
+			char tmp[NAME_DISPLAY];
+			strcpy_s(tmp,Player[id]);
+			for (int i = 0; i < n; ++i)
+			{
+				Player[id][i] = ' ';
+			}
+			Player[id][(NAME_DISPLAY - n) / 2] = '\0';
+			strcat_s(Player[id], tmp);
+		}
+	}
+
 	bool isWinner(int PlayerOrder)
 	{
 
 	}
 
-	void PrintMap()
+	void printMap()
 	{
 		showCursor(false);
 
@@ -254,6 +281,12 @@ struct Map
 			}
 		}
 		moveTo(0, 0);
+	}
+
+	void selectPoint()
+	{
+		int playerid = TurnCounter % 2;
+
 	}
 
 	void navigateToPoint()
@@ -306,8 +339,6 @@ struct Map
 	}
 };
 
-
-
 int main()
 {
 	//Disable selection
@@ -317,7 +348,10 @@ int main()
 	changeWindows(WINDOWS_HEGHT, WINDOWS_WIDTH);
 
 	Map test = Map(3,5);
-	test.PrintMap();
+	test.inputPlayerName(0);
+	test.inputPlayerName(1);
+	test.printMap();
 	test.navigateToPoint();
+	char x[100];
 	return 0;
 }
