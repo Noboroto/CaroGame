@@ -133,10 +133,45 @@ void changeWindows(int height, int width)
 	ShowScrollBar(hWnd, SB_BOTH, false);
 }
 
-void inputCharArray(char c[], int max)
+void inputCharArray(char c[],const int max)
 {
-	cin.get(c, max);
-	if (cin) cin.ignore(INT_MAX, '\n');
+	char x;
+	int i = 0;
+	do
+	{
+		x = cin.get();
+		if (x == '\n' || x == '\r' || x == '\0') break;
+		if (i < max - 1)
+		{
+			c[i] = x;
+			i++;
+		}
+	} while (x != '\n' && x != '\r' && x != '\0');
+	c[i] = '\0';
+}
+
+int inputInteger()
+{
+	char c;
+	int res = 0;
+	do
+	{
+		c = _getch();
+		if (c >= '0' && c <= '9')
+		{
+			res = res * 10 + (c - '0');
+			cout << c;
+		}
+		else if (c == '\b')
+		{
+			res /= 10;
+			cout << c;
+			cout << ' ';
+			cout << c;
+		}
+	} while (c != '\n' && c != '\r');
+	cout << '\n';
+	return res;
 }
 
 struct Point
@@ -193,6 +228,7 @@ struct Map
 	char Player[2][NAME_DISPLAY];
 	int RowSize = 3;
 	int ColSize = 3;
+	int WiningCounter = 3;
 	int TurnCounter = 0;
 	int TieCounter;
 
@@ -204,9 +240,26 @@ struct Map
 		return (WINDOWS_WIDTH - NAME_DISPLAY - 1 - NOTICE_SIZE - ((colsize + 2) * COL_SIZE)) / 2;
 	}
 
-	Map(int rowSize = 3, int colsize = 3)
+	Map()
 	{
-		RowSize = rowSize;
+		int rowsize = 0, colsize = 0;
+		get_col:
+			cout << "How many column you want to use? (from 3 to 10) ";
+			colsize = inputInteger();
+			if (colsize < 3 || colsize > 10)
+			{
+				cout << "Out of range or wrong format! Please try again!\n";
+				goto get_col;
+			}
+		get_row:
+			cout << "How many row you want to use? (from 3 to 10) ";
+			rowsize = inputInteger();
+			if (rowsize < 3 || rowsize > 10)
+			{
+				cout << "Out of range or wrong format! Please try again!\n";
+				goto get_row;
+			}
+		RowSize = rowsize;
 		ColSize = colsize;
 		TieCounter = RowSize * colsize;
 		int y = 0;
@@ -246,7 +299,21 @@ struct Map
 		CurrentRow = DesRow;
 	}
 
-	void inputPlayerName(int id)
+	void getWiningCounter()
+	{
+		if (min(ColSize, RowSize) == WiningCounter) return;
+		wining_move:
+		cout << "How many continuous point to win? (from 3 to " << min(ColSize, RowSize) << ") ";
+		int selection = inputInteger();
+		if (selection < WiningCounter || selection > min(ColSize, RowSize))
+		{
+			cout << "Out of range or wrong format! Please try again!\n";
+			goto wining_move;
+		}
+		WiningCounter = selection;
+	}
+
+	void getPlayerInfo(int id)
 	{
 		cout << "Please type player " << (id + 1) << " symbol (max: 7 characters) ";
 		showCursor(true);
@@ -256,7 +323,7 @@ struct Map
 		{
 			char tmp[NAME_DISPLAY];
 			strcpy_s(tmp,Player[id]);
-			for (int i = 0; i < n; ++i)
+			for (int i = 0; i < NAME_DISPLAY - 1; ++i)
 			{
 				Player[id][i] = ' ';
 			}
@@ -375,9 +442,12 @@ int main()
 	//change windows size
 	changeWindows(WINDOWS_HEGHT, WINDOWS_WIDTH);
 	
-	Map test = Map(10,10);
-	test.inputPlayerName(0);
-	test.inputPlayerName(1);
+	Started:
+	system("cls");	
+	Map test = Map();
+	test.getWiningCounter();
+	test.getPlayerInfo(0);
+	test.getPlayerInfo(1);
 	test.printMap();
 	test.navigateToPoint();
 	return 0;
