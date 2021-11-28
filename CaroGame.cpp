@@ -26,7 +26,9 @@ const int NAME_DISPLAY = 8;
 const int COL_SIZE = 9;
 const int ROW_SIZE = 5;
 const int MAX_ACCOUNT = 100;
-const int WINDOWS_WIDTH = (COL_SIZE + 2) * (MAX_COL - 2);
+const int NOTICE_SIZE = 1;
+const int NOTICE_COL = (COL_SIZE + 2) * (MAX_COL - 2) + 1;
+const int WINDOWS_WIDTH = (COL_SIZE + 2) * (MAX_COL - 2) + NAME_DISPLAY - 1 + NOTICE_SIZE;
 const int WINDOWS_HEGHT = ROW_SIZE * (MAX_ROW - 2) + 2;
 
 
@@ -199,7 +201,7 @@ struct Map
 
 	int startScreenCol(int colsize = 10)
 	{
-		return (WINDOWS_WIDTH - ((colsize + 2) * COL_SIZE)) / 2;
+		return (WINDOWS_WIDTH - NAME_DISPLAY - 1 - NOTICE_SIZE - ((colsize + 2) * COL_SIZE)) / 2;
 	}
 
 	Map(int rowSize = 3, int colsize = 3)
@@ -246,7 +248,6 @@ struct Map
 
 	void inputPlayerName(int id)
 	{
-		moveCursor(RowSize * ROW_SIZE, 0);
 		cout << "Please type player " << (id + 1) << " symbol (max: 7 characters) ";
 		showCursor(true);
 		inputCharArray(Player[id], NAME_DISPLAY);
@@ -269,8 +270,24 @@ struct Map
 
 	}
 
+	void printNotice()
+	{
+		moveCursor(0, NOTICE_COL);
+		cout << "         ";
+		moveCursor(0, NOTICE_COL);
+		cout << "Turn " << TurnCounter + 1;
+		moveCursor(1, NOTICE_COL);
+		cout << "         ";
+		moveCursor(1, NOTICE_COL);
+		for (int i = 0; i < strlen(Player[TurnCounter % 2]); ++i)
+		{
+			if (Player[TurnCounter % 2][i] != ' ') cout << Player[TurnCounter % 2][i];
+		}
+	}
+
 	void printMap()
 	{
+		system("cls");
 		showCursor(false);
 
 		for (int i = 1; i <= RowSize; ++i)
@@ -280,13 +297,20 @@ struct Map
 				Grid[i][j].drawPoint();
 			}
 		}
+		printNotice();
 		moveTo(0, 0);
 	}
 
 	void selectPoint()
 	{
 		int playerid = TurnCounter % 2;
-
+		if (Grid[CurrentRow][CurrentCol].CurrentPlayer != -1) return;
+		moveCursor(Grid[CurrentRow][CurrentCol].DisplayRow + 2, Grid[CurrentRow][CurrentCol].DisplayCol + 2);
+		cout << Player[playerid];
+		Grid[CurrentRow][CurrentCol].CurrentPlayer = playerid;
+		TurnCounter++;
+		TieCounter--;
+		printNotice();
 	}
 
 	void navigateToPoint()
@@ -315,6 +339,10 @@ struct Map
 					moveTo(0, 1);
 					break;
 				}
+			}
+			else if (c == '\n' || c == '\r')
+			{
+				selectPoint();
 			}
 			else
 			{
@@ -346,12 +374,11 @@ int main()
 
 	//change windows size
 	changeWindows(WINDOWS_HEGHT, WINDOWS_WIDTH);
-
-	Map test = Map(3,5);
+	
+	Map test = Map(10,10);
 	test.inputPlayerName(0);
 	test.inputPlayerName(1);
 	test.printMap();
 	test.navigateToPoint();
-	char x[100];
 	return 0;
 }
