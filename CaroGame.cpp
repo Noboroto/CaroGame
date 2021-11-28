@@ -12,6 +12,11 @@ using std::cout;
 using std::ifstream;
 using std::ofstream;
 
+//COLOR
+const int BLACK = 0;
+const int WHITE = 7;
+const int MAX_COLOR_CODE = 16;
+
 //KEY CHAR
 const int KEY_UP = 72;
 const int KEY_DOWN = 80;
@@ -32,7 +37,6 @@ const int WINDOWS_WIDTH = (COL_SIZE + 2) * (MAX_COL - 2) + NAME_DISPLAY - 1 + NO
 const int WINDOWS_HEGHT = ROW_SIZE * (MAX_ROW - 2) + 2;
 
 
-int winnerID = -1;
 int UserInputInt_ = 0;
 bool isSingleMode = false;
 HANDLE OutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -88,6 +92,12 @@ void saveAccounts()
 		file << Accounts_[i].Win << ' ' << Accounts_[i].Tie << '\n';
 	}
 	file.close();
+}
+
+void setColor(int backgound_color, int text_color)
+{
+	int color_code = backgound_color * 16 + text_color;
+	SetConsoleTextAttribute(OutHandle, color_code);
 }
 
 void moveCursor(int row, int col)
@@ -147,7 +157,7 @@ void inputCharArray(char c[],const int max)
 			i++;
 		}
 	} while (x != '\n' && x != '\r' && x != '\0');
-	c[i] = '\0';
+	if (i > 0) c[i] = '\0';
 }
 
 int inputInteger()
@@ -226,11 +236,12 @@ struct Map
 {
 	Point Grid[MAX_ROW][MAX_COL];
 	char Player[2][NAME_DISPLAY];
+	int PlayerColor[2];
 	int RowSize = 3;
 	int ColSize = 3;
 	int WiningCounter = 3;
 	int TurnCounter = 0;
-	int TieCounter;
+	int WinerID = -1;
 
 	int CurrentCol = 1;
 	int CurrentRow = 1;
@@ -261,7 +272,6 @@ struct Map
 			}
 		RowSize = rowsize;
 		ColSize = colsize;
-		TieCounter = RowSize * colsize;
 		int y = 0;
 		int startX = startScreenCol(colsize);
 		for (int i = 1; i <= RowSize; ++i)
@@ -280,6 +290,8 @@ struct Map
 				Player[i][j] = '\0';
 			}
 		}
+		Player[0][0] = 'X';
+		Player[1][0] = 'O';
 	}
 
 	void moveTo(int AddRow, int AddCol)
@@ -315,7 +327,8 @@ struct Map
 
 	void getPlayerInfo(int id)
 	{
-		cout << "Please type player " << (id + 1) << " symbol (max: 7 characters) ";
+		cout << "Please type player " << (id + 1) << " symbol (Max: 7 characters - Default is ";
+		cout << Player[id] << ") ";
 		showCursor(true);
 		inputCharArray(Player[id], NAME_DISPLAY);
 		int n = strlen(Player[id]);
@@ -330,11 +343,23 @@ struct Map
 			Player[id][(NAME_DISPLAY - n) / 2] = '\0';
 			strcat_s(Player[id], tmp);
 		}
-	}
-
-	bool isWinner(int PlayerOrder)
-	{
-
+		select_color:
+		cout << "Please select your color by number\n";
+		for (int i = 1; i < MAX_COLOR_CODE; ++i)
+		{
+			setColor(BLACK, i);
+			cout << i << ' ';
+		}
+		setColor(BLACK, WHITE);
+		int ColorCode = -1;
+		cout << '\n';
+		ColorCode = inputInteger();
+		if (ColorCode < 1 || ColorCode >= MAX_COLOR_CODE)
+		{
+			cout << "Out of range or wrong format! Please try again!\n";
+			goto select_color;
+		}
+		PlayerColor[id] = ColorCode;
 	}
 
 	void printNotice()
@@ -346,10 +371,12 @@ struct Map
 		moveCursor(1, NOTICE_COL);
 		cout << "         ";
 		moveCursor(1, NOTICE_COL);
+		setColor(BLACK, PlayerColor[TurnCounter % 2]);
 		for (int i = 0; i < strlen(Player[TurnCounter % 2]); ++i)
 		{
 			if (Player[TurnCounter % 2][i] != ' ') cout << Player[TurnCounter % 2][i];
 		}
+		setColor(BLACK, WHITE);
 	}
 
 	void printMap()
@@ -368,24 +395,97 @@ struct Map
 		moveTo(0, 0);
 	}
 
+	void printWinnerMessage()
+	{
+		moveCursor(RowSize * ROW_SIZE + 1, 0);
+		cout << "The winer is ";
+		setColor(BLACK, PlayerColor[WinerID]);
+		for (int i = 0; i < strlen(Player[TurnCounter % 2]); ++i)
+		{
+			if (Player[TurnCounter % 2][i] != ' ') cout << Player[TurnCounter % 2][i];
+		}
+		setColor(BLACK, WHITE);
+		int counter = 0;
+		for (int i = 1; i <= RowSize; ++i)
+		{
+			for (int j = 1; j <= ColSize; ++j)
+			{
+				counter += (Grid[i][j].CurrentPlayer == WinerID);
+			}
+		}
+		cout << " after ";
+		setColor(BLACK, PlayerColor[WinerID]);
+		cout << counter;
+		setColor(BLACK, WHITE);
+		cout << " moves\n";
+	}
+
+	bool UpdateState()
+	{
+		for (int i = 1; i <= RowSize; ++i)
+		{
+			for (int j = 1; j <= ColSize; ++j)
+			{
+				int CurrentPlayer = Grid[i][j].CurrentPlayer;
+				if (CurrentPlayer < 0) continue;
+				Grid[i][j].HorizontalLink = 1;
+				Grid[i][j].VerticalLink = 1;
+				Grid[i][j].MainCross = 1;
+				Grid[i][j].ExtraCross = 1;
+				if (Grid[i][j - 1].CurrentPlayer == CurrentPlayer)
+					Grid[i][j].HorizontalLink += Grid[i][j - 1].HorizontalLink;
+				if (Grid[i - 1][j].CurrentPlayer == CurrentPlayer)
+					Grid[i][j].VerticalLink += Grid[i - 1][j].VerticalLink;
+				if (Grid[i - 1][j - 1].CurrentPlayer == CurrentPlayer)
+					Grid[i][j].MainCross += Grid[i - 1][j - 1].MainCross;
+				if (Grid[i - 1][j + 1].CurrentPlayer == CurrentPlayer)
+					Grid[i][j].ExtraCross += Grid[i - 1][j + 1].ExtraCross;
+				if ((Grid[i][j].HorizontalLink >= WiningCounter)
+					|| (Grid[i][j].VerticalLink >= WiningCounter)
+					|| (Grid[i][j].MainCross >= WiningCounter)
+					|| (Grid[i][j].ExtraCross >= WiningCounter))
+					return true;
+			}
+		}
+		return false;
+	}
+
 	void selectPoint()
 	{
 		int playerid = TurnCounter % 2;
 		if (Grid[CurrentRow][CurrentCol].CurrentPlayer != -1) return;
 		moveCursor(Grid[CurrentRow][CurrentCol].DisplayRow + 2, Grid[CurrentRow][CurrentCol].DisplayCol + 2);
+		setColor(BLACK, PlayerColor[playerid]);
 		cout << Player[playerid];
 		Grid[CurrentRow][CurrentCol].CurrentPlayer = playerid;
-		TurnCounter++;
-		TieCounter--;
-		printNotice();
+		setColor(BLACK, WHITE);
+		
+		if (UpdateState())
+		{
+			WinerID = playerid;
+			printWinnerMessage();
+		}
+		else
+		{			
+			TurnCounter++;
+			if (TurnCounter == RowSize * ColSize)
+			{
+				moveCursor(RowSize * ROW_SIZE + 1, 0);
+				cout << "The game is tie!\n";
+				WinerID = 3;
+				return;
+			}
+			printNotice();
+		}
 	}
 
 	void navigateToPoint()
 	{
 		while (true)
 		{
+			if (WinerID != -1) return;
 			char c = _getch();
-			if (c == ' ' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+			if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
 			{
 				switch (c)
 				{
@@ -407,7 +507,7 @@ struct Map
 					break;
 				}
 			}
-			else if (c == '\n' || c == '\r')
+			else if (c == '\n' || c == '\r' || c == ' ')
 			{
 				selectPoint();
 			}
@@ -441,14 +541,23 @@ int main()
 
 	//change windows size
 	changeWindows(WINDOWS_HEGHT, WINDOWS_WIDTH);
+	char restart[2];
 	
 	Started:
 	system("cls");	
+	cout << "Welcome you to play my game\n";
+	cout << "You can use A,W,S,D or ARROW KEY to move around the board\n";
+	cout << "You can use SPACE or ENTER to place your symbol on the board\n"; 
 	Map test = Map();
 	test.getWiningCounter();
 	test.getPlayerInfo(0);
 	test.getPlayerInfo(1);
 	test.printMap();
 	test.navigateToPoint();
+	cout << "Type R if you want to replay! ";
+	restart[0] = '\0';
+	inputCharArray(restart, 2);
+	showCursor(true);
+	if (restart[0] == 'R') goto Started;
 	return 0;
 }
