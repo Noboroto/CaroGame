@@ -5,11 +5,18 @@
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
+#include <conio.h>  
 
 using std::cin;
 using std::cout;
 using std::ifstream;
 using std::ofstream;
+
+//KEY CHAR
+const int KEY_UP = 72;
+const int KEY_DOWN = 80;
+const int KEY_LEFT = 75;
+const int KEY_RIGHT = 77;
 
 //LIMITATION
 const int MAX_ROW = 12;
@@ -84,10 +91,20 @@ void moveCursor(int row, int col)
 	SetConsoleCursorPosition(ScreenHandle, CursorPosition);
 }
 
+void ShowCursor(bool CursorVisibility)
+{
+	CONSOLE_CURSOR_INFO ConCurInf;
+
+	ConCurInf.dwSize = 10;
+	ConCurInf.bVisible = CursorVisibility;
+
+	SetConsoleCursorInfo(ScreenHandle, &ConCurInf);
+}
+
 struct Point
 {
-	int Col;
-	int Row;
+	int DisplayCol;
+	int DisplayRow;
 	int VerticalLink = 0;
 	int HorizontalLink = 0;
 	int MainCross = 0;
@@ -95,8 +112,8 @@ struct Point
 	int CurrentPlayer = -1;
 	Point(int col = 0, int row = 0)
 	{
-		Col = col;
-		Row = row;
+		DisplayCol = col;
+		DisplayRow = row;
 	}
 
 	void drawHorizontalLine()
@@ -119,15 +136,15 @@ struct Point
 	}
 	void drawPoint()
 	{
-		moveCursor(Row, Col);
+		moveCursor(DisplayRow, DisplayCol);
 		drawHorizontalLine();
-		moveCursor(Row + 1, Col);
+		moveCursor(DisplayRow + 1, DisplayCol);
 		drawBlankVerticalLin();
-		moveCursor(Row + 2, Col);
+		moveCursor(DisplayRow + 2, DisplayCol);
 		drawBlankVerticalLin();
-		moveCursor(Row + 3, Col);
+		moveCursor(DisplayRow + 3, DisplayCol);
 		drawBlankVerticalLin();
-		moveCursor(Row + 4, Col);
+		moveCursor(DisplayRow + 4, DisplayCol);
 		drawHorizontalLine();
 	}
 };
@@ -141,6 +158,9 @@ struct Map
 	int WiningMove = 3;
 	int TieCounter;
 
+	int CurrentCol = 1;
+	int CurrentRow = 1;
+
 	Map(int rowSize = 3, int colsize = 3)
 	{
 		RowSize = rowSize;
@@ -152,10 +172,34 @@ struct Map
 			Grid[i][1] = Point(0, y);
 			for (int j = 2; j <= ColSize; ++j)
 			{
-				Grid[i][j] = Point(Grid[i][j - 1].Col + COL_SIZE + 2, y);
+				Grid[i][j] = Point(Grid[i][j - 1].DisplayCol + COL_SIZE + 2, y);
 			}
 			y += 5;
 		}
+		for (int i = 0; i < 2; i++)
+		{
+			for (int j = 0; j < NAME_DISPLAY; ++j)
+			{
+				Player[i][j] = '\0';
+			}
+		}
+	}
+
+	void moveTo(int AddRow, int AddCol)
+	{
+		int DesRow = CurrentRow + AddRow;
+		int DesCol = CurrentCol + AddCol;
+		if (DesRow < 1 || DesCol < 1 || DesCol > ColSize || DesRow > RowSize) return;
+		moveCursor(Grid[CurrentRow][CurrentCol].DisplayRow + 2, Grid[CurrentRow][CurrentCol].DisplayCol + 1);
+		cout << ' ';
+		moveCursor(Grid[CurrentRow][CurrentCol].DisplayRow + 2, Grid[CurrentRow][CurrentCol].DisplayCol + COL_SIZE);
+		cout << ' ';
+		moveCursor(Grid[DesRow][DesCol].DisplayRow + 2, Grid[DesRow][DesCol].DisplayCol + 1);
+		cout << '>';
+		moveCursor(Grid[DesRow][DesCol].DisplayRow + 2, Grid[DesRow][DesCol].DisplayCol + COL_SIZE);
+		cout << '<';
+		CurrentCol = DesCol;
+		CurrentRow = DesRow;
 	}
 
 	bool isWinner(int PlayerOrder)
@@ -165,6 +209,7 @@ struct Map
 
 	void PrintMap()
 	{
+		ShowCursor(false);
 		SMALL_RECT WindowSize;
 		WindowSize.Top = 0;
 		WindowSize.Left = 0;
@@ -190,18 +235,64 @@ struct Map
 				Grid[i][j].drawPoint();
 			}
 		}
+		moveTo(0, 0);
 	}
 };
+
+void navigateToPoint(Map &board)
+{
+	while (true)
+	{
+		char c = _getch();
+		if (c == ' ' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+		{
+			switch (c)
+			{
+			case 'W':
+			case 'w':
+				board.moveTo(-1,0);
+				break;
+			case 'S':
+			case 's':
+				board.moveTo(1, 0);
+				break;
+			case 'A':
+			case 'a':
+				board.moveTo(0, -1);
+				break;
+			case 'D':
+			case 'd':
+				board.moveTo(0, 1);
+				break;
+			}
+		}
+		else
+		{
+			c = _getch();
+			switch (c)
+			{
+			case KEY_UP:
+				board.moveTo(-1, 0);
+				break;
+			case KEY_DOWN:
+				board.moveTo(1, 0);
+				break;
+			case KEY_LEFT:
+				board.moveTo(0, -1);
+				break;
+			case KEY_RIGHT:
+				board.moveTo(0, 1);
+				break;
+			}
+		}
+	}
+}
 
 
 int main()
 {
-	Map test = Map(3, 7);
+	Map test = Map(3, 5);
 	test.PrintMap();
-	char x;
-	while (true)
-	{
-		cin >> x;
-	}
+	navigateToPoint(test);
 	return 0;
 }
