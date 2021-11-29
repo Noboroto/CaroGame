@@ -241,7 +241,7 @@ struct Map
 	int ColSize = 3;
 	int WiningCounter = 3;
 	int TurnCounter = 0;
-	int WinerID = -1;
+	int WinnerID = -1;
 
 	int CurrentCol = 1;
 	int CurrentRow = 1;
@@ -398,8 +398,8 @@ struct Map
 	void printWinnerMessage()
 	{
 		moveCursor(RowSize * ROW_SIZE + 1, 0);
-		cout << "The winer is ";
-		setColor(BLACK, PlayerColor[WinerID]);
+		cout << "The winner is ";
+		setColor(BLACK, PlayerColor[WinnerID]);
 		for (int i = 0; i < strlen(Player[TurnCounter % 2]); ++i)
 		{
 			if (Player[TurnCounter % 2][i] != ' ') cout << Player[TurnCounter % 2][i];
@@ -410,11 +410,11 @@ struct Map
 		{
 			for (int j = 1; j <= ColSize; ++j)
 			{
-				counter += (Grid[i][j].CurrentPlayer == WinerID);
+				counter += (Grid[i][j].CurrentPlayer == WinnerID);
 			}
 		}
 		cout << " after ";
-		setColor(BLACK, PlayerColor[WinerID]);
+		setColor(BLACK, PlayerColor[WinnerID]);
 		cout << counter;
 		setColor(BLACK, WHITE);
 		cout << " moves\n";
@@ -462,7 +462,7 @@ struct Map
 		
 		if (UpdateState())
 		{
-			WinerID = playerid;
+			WinnerID = playerid;
 			printWinnerMessage();
 		}
 		else
@@ -472,7 +472,7 @@ struct Map
 			{
 				moveCursor(RowSize * ROW_SIZE + 1, 0);
 				cout << "The game is tie!\n";
-				WinerID = 3;
+				WinnerID = 3;
 				return;
 			}
 			printNotice();
@@ -483,7 +483,7 @@ struct Map
 	{
 		while (true)
 		{
-			if (WinerID != -1) return;
+			if (WinnerID != -1) return;
 			char c = _getch();
 			if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
 			{
@@ -541,7 +541,7 @@ int main()
 
 	//change windows size
 	changeWindows(WINDOWS_HEGHT, WINDOWS_WIDTH);
-	char restart[2];
+	char restart;
 	
 	Started:
 	system("cls");	
@@ -554,10 +554,8 @@ int main()
 	test.getPlayerInfo(1);
 	test.printMap();
 	test.navigateToPoint();
-	cout << "Type R if you want to replay! ";
-	restart[0] = '\0';
-	inputCharArray(restart, 2);
-	showCursor(true);
-	if (restart[0] == 'R') goto Started;
+	cout << "Press R KEY if you want to replay! ";
+	restart = _getch();
+	if (restart == 'R' || restart == 'r') goto Started;
 	return 0;
 }
