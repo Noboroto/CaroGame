@@ -534,20 +534,16 @@ struct Map
 	}
 };
 
-int main()
+bool playMultiplayerGame() // return true if player want to play again
 {
-	//Disable selection
-	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE);
-
 	//change windows size
 	changeWindows(WINDOWS_HEGHT, WINDOWS_WIDTH);
 	char restart;
-	
-	Started:
-	system("cls");	
+
+	system("cls");
 	cout << "Welcome you to play my game\n";
 	cout << "You can use A,W,S,D or ARROW KEY to move around the board\n";
-	cout << "You can use SPACE or ENTER to place your symbol on the board\n"; 
+	cout << "You can use SPACE or ENTER to place your symbol on the board\n";
 	Map test = Map();
 	test.getWiningCounter();
 	test.getPlayerInfo(0);
@@ -556,6 +552,107 @@ int main()
 	test.navigateToPoint();
 	cout << "Press R KEY if you want to replay! ";
 	restart = _getch();
-	if (restart == 'R' || restart == 'r') goto Started;
+	if (restart == 'R' || restart == 'r') return true;
+	else return false;
+}
+
+int printName()
+{
+	//change windows size
+	changeWindows(36, 90);
+	int i = 5;
+	const int col = 7;
+	moveCursor(i, col);
+	ifstream file;
+	file.open("Name.txt");
+	char c;
+	setColor(BLACK, 11);
+	while (!file.eof())
+	{
+		c = file.get();
+		if (c == '\n' || c == '\r')
+		{
+			i++;
+			moveCursor(i, col);
+		}
+		else cout << c;
+	}
+	setColor(BLACK, WHITE);
+	return i;
+}
+
+int printGameModeSelection()
+{
+	system("cls");
+	showCursor(false);
+	int LastRow = printName() + 6;
+	const int col = 36;
+	int pos = 0;
+	int pre = 0;
+	moveCursor(LastRow, col);
+	cout << "Singleplayer Mode";
+	moveCursor(LastRow + 2, col);
+	cout << "Multiplayer Mode";
+	moveCursor(LastRow + pos * 2, col - 2);
+	cout << '>';
+	cout << '\b';
+	while (true)
+	{
+		char c = _getch();
+		if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+		{
+			pre = pos;
+			switch (c)
+			{
+			case 'W':
+			case 'w':
+				pos = abs((pos - 1) % 2);
+				break;
+			case 'S':
+			case 's':
+				pos = abs((pos + 1) % 2);
+				break;
+			}
+		}
+		else if (c == '\n' || c == '\r' || c == ' ')
+		{
+			return pos;
+		}
+		else
+		{
+			c = _getch();
+			switch (c)
+			{
+			case KEY_UP:
+				pos = abs((pos - 1) % 2);
+				break;
+			case KEY_DOWN:
+				pos = abs((pos + 1) % 2);
+				break;
+			}
+		}
+		moveCursor(LastRow + pre * 2, col - 2);
+		cout << ' ';
+		moveCursor(LastRow + pos * 2, col - 2);
+		cout << '>';
+	}
+}
+
+int main()
+{
+	//Disable selection
+	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE); 
+
+	Starting:
+	int mode = printGameModeSelection();
+	switch (mode)
+	{
+	case 0:
+		break;
+	case 1:
+		if (playMultiplayerGame())
+			goto Starting;
+		break;
+	}
 	return 0;
 }
