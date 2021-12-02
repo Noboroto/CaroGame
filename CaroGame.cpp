@@ -188,11 +188,9 @@ struct Point
 {
 	int DisplayCol;
 	int DisplayRow;
-	int VerticalLink = 0;
-	int HorizontalLink = 0;
-	int MainCross = 0;
-	int ExtraCross = 0;
 	int CurrentPlayer = -1;
+	int TopLeft = 0, Top = 0, TopRight = 0, Right = 0, BottomRight = 0, Bottom = 0, BottomLeft = 0, Left = 0;
+
 	Point(int row = 0, int col = 0)
 	{
 		DisplayCol = col;
@@ -420,6 +418,20 @@ struct Map
 		cout << " moves\n";
 	}
 
+	int getAndUpdateVertical(int x, int y, int direct = 1, bool AllowEdit = true)
+	{
+		int res = 0;
+		int CurrentPlayer = Grid[x][y].CurrentPlayer;
+		if (CurrentPlayer == -1) return 0;
+		for (int i = 1; i < WiningCounter; ++i)
+		{
+			if (Grid[x + i * direct][y].CurrentPlayer == -1) break;
+			if ()
+			res++;
+		}
+		return res;
+	}
+
 	bool UpdateState()
 	{
 		for (int i = 1; i <= RowSize; ++i)
@@ -428,23 +440,7 @@ struct Map
 			{
 				int CurrentPlayer = Grid[i][j].CurrentPlayer;
 				if (CurrentPlayer < 0) continue;
-				Grid[i][j].HorizontalLink = 1;
-				Grid[i][j].VerticalLink = 1;
-				Grid[i][j].MainCross = 1;
-				Grid[i][j].ExtraCross = 1;
-				if (Grid[i][j - 1].CurrentPlayer == CurrentPlayer)
-					Grid[i][j].HorizontalLink += Grid[i][j - 1].HorizontalLink;
-				if (Grid[i - 1][j].CurrentPlayer == CurrentPlayer)
-					Grid[i][j].VerticalLink += Grid[i - 1][j].VerticalLink;
-				if (Grid[i - 1][j - 1].CurrentPlayer == CurrentPlayer)
-					Grid[i][j].MainCross += Grid[i - 1][j - 1].MainCross;
-				if (Grid[i - 1][j + 1].CurrentPlayer == CurrentPlayer)
-					Grid[i][j].ExtraCross += Grid[i - 1][j + 1].ExtraCross;
-				if ((Grid[i][j].HorizontalLink >= WiningCounter)
-					|| (Grid[i][j].VerticalLink >= WiningCounter)
-					|| (Grid[i][j].MainCross >= WiningCounter)
-					|| (Grid[i][j].ExtraCross >= WiningCounter))
-					return true;
+				
 			}
 		}
 		return false;
@@ -638,9 +634,18 @@ int printGameModeSelection()
 	}
 }
 
+Point Grid[MAX_ROW][MAX_COL];
+int n = 0;
+
+
+
+
 int main()
 {
+
+
 	//Disable selection
+	/*
 	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE); 
 
 	Starting:
@@ -653,6 +658,6 @@ int main()
 		if (playMultiplayerGame())
 			goto Starting;
 		break;
-	}
+	}/*/
 	return 0;
 }
