@@ -2,12 +2,15 @@
 #include <Windows.h>
 #include <fstream>
 #include <cstring>
-#include <conio.h>  
+#include <conio.h>
+#include <ctime>
+#include <cstdlib>
 
 using std::cin;
 using std::cout;
 using std::ifstream;
 using std::ofstream;
+using std::min;
 
 //COLOR
 const int BLACK = 0;
@@ -40,6 +43,15 @@ HANDLE OutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 HANDLE InHamdle = GetStdHandle(STD_INPUT_HANDLE);
 COORD CursorPosition;
 
+struct Coordinate
+{
+	int Row = 0, Col = 0;
+	Coordinate(int row = 0, int col = 0)
+	{
+		Row = row;
+		Col = col;
+	}
+};
 
 struct Player
 {
@@ -53,6 +65,11 @@ struct Player
 		memset(Username, '\0', NAME_DISPLAY + 1);
 		Win = win;
 		Tie = tie;
+	}
+
+	void setName(char name[])
+	{
+		strcpy_s(Username, name);
 	}
 };
 
@@ -91,6 +108,12 @@ void saveAccounts()
 	file.close();
 }
 
+void registerAccount(char name[])
+{
+	Accounts_[AccountCounter_].setName(name);
+	AccountCounter_++;
+}
+
 void setColor(int backgound_color, int text_color)
 {
 	int color_code = backgound_color * 16 + text_color;
@@ -114,6 +137,12 @@ void showCursor(bool CursorVisibility)
 	SetConsoleCursorInfo(OutHandle, &ConCurInf);
 }
 
+int getRandomNumber(int from, int to)
+{
+	srand(time(NULL));
+	return (rand() % to) + from;
+}
+
 void changeWindows(int height, int width)
 {
 	SMALL_RECT WindowSize;
@@ -130,19 +159,11 @@ void changeWindows(int height, int width)
 	SetConsoleWindowInfo(OutHandle, 1, &WindowSize);
 	//change buffer size
 	SetConsoleScreenBufferSize(OutHandle, NewSize);
-
-	auto hWnd = GetConsoleWindow();
-	HMENU hMenu = GetSystemMenu(hWnd, false);
-
-	//disable changing windows and buffer size
-	SetWindowLong(hWnd, GWL_STYLE, GetWindowLong(hWnd, GWL_STYLE) & ~WS_SIZEBOX);
-	DeleteMenu(hMenu, SC_MAXIMIZE, MF_BYCOMMAND);
-	ShowScrollBar(hWnd, SB_BOTH, false);
 }
 
 void inputCharArray(char c[],const int max)
 {
-	char x;
+	char x, tmp = c[0];
 	int i = 0;
 	do
 	{
@@ -167,9 +188,14 @@ void inputCharArray(char c[],const int max)
 		}
 	} while (x != '\n' && x != '\r' && x != '\0');
 	if (i > 0) c[i] = '\0';
+	else if (i == 0)
+	{
+		c[0] = tmp;
+		c[1] = '\0';
+	}
 }
 
-int inputInteger()
+int inputPositiveInteger()
 {
 	char c;
 	int res = 0;
@@ -258,29 +284,14 @@ struct Map
 		return (WINDOWS_WIDTH - NAME_DISPLAY - 1 - NOTICE_SIZE - ((colsize + 2) * COL_SIZE)) / 2;
 	}
 
-	Map()
+	void Initialize()
 	{
-		int rowsize = 0, colsize = 0;
-		get_col:
-			cout << "How many column you want to use? (from 3 to 10) ";
-			colsize = inputInteger();
-			if (colsize < 3 || colsize > 10)
-			{
-				cout << "Out of range or wrong format! Please try again!\n";
-				goto get_col;
-			}
-		get_row:
-			cout << "How many row you want to use? (from 3 to 10) ";
-			rowsize = inputInteger();
-			if (rowsize < 3 || rowsize > 10)
-			{
-				cout << "Out of range or wrong format! Please try again!\n";
-				goto get_row;
-			}
-		RowSize = rowsize;
-		ColSize = colsize;
 		int y = 0;
-		int startX = startScreenCol(colsize);
+		int startX = startScreenCol(ColSize);
+		WinnerID = -1;
+		TurnCounter = 0;
+		CurrentRow = 1;
+		CurrentCol = 1;
 		for (int i = 1; i <= RowSize; ++i)
 		{
 			Grid[i][1] = Point(y, startX);
@@ -290,6 +301,30 @@ struct Map
 			}
 			y += 5;
 		}
+	}
+
+	Map()
+	{
+		int rowsize = 0, colsize = 0;
+		get_col:
+			cout << "How many column you want to use? (from 3 to 10) ";
+			colsize = inputPositiveInteger();
+			if (colsize < 3 || colsize > 10)
+			{
+				cout << "Out of range or wrong format! Please try again!\n";
+				goto get_col;
+			}
+		get_row:
+			cout << "How many row you want to use? (from 3 to 10) ";
+			rowsize = inputPositiveInteger();
+			if (rowsize < 3 || rowsize > 10)
+			{
+				cout << "Out of range or wrong format! Please try again!\n";
+				goto get_row;
+			}
+		RowSize = rowsize;
+		ColSize = colsize;
+		Initialize();
 		for (int i = 0; i < 2; i++)
 		{
 			for (int j = 0; j < NAME_DISPLAY; ++j)
@@ -323,7 +358,7 @@ struct Map
 		if (min(ColSize, RowSize) == WiningCounter) return;
 		wining_move:
 		cout << "How many continuous point to win? (from 3 to " << min(ColSize, RowSize) << ") ";
-		int selection = inputInteger();
+		int selection = inputPositiveInteger();
 		if (selection < WiningCounter || selection > min(ColSize, RowSize))
 		{
 			cout << "Out of range or wrong format! Please try again!\n";
@@ -360,7 +395,7 @@ struct Map
 		setColor(BLACK, WHITE);
 		int ColorCode = -1;
 		cout << '\n';
-		ColorCode = inputInteger();
+		ColorCode = inputPositiveInteger();
 		if (ColorCode < 1 || ColorCode >= MAX_COLOR_CODE)
 		{
 			cout << "Out of range or wrong format! Please try again!\n";
@@ -369,7 +404,13 @@ struct Map
 		PlayerColor[id] = ColorCode;
 	}
 
-	void printNotice()
+	void setPlayerInfo(int id, char name[], int colorcode)
+	{
+		strcpy_s(Player[id], name);
+		PlayerColor[id] = colorcode;
+	}
+
+	void printNotice(bool UseBot = false)
 	{
 		moveCursor(0, NOTICE_COL);
 		cout << "         ";
@@ -384,6 +425,12 @@ struct Map
 			if (Player[TurnCounter % 2][i] != ' ') cout << Player[TurnCounter % 2][i];
 		}
 		setColor(BLACK, WHITE);
+		if (UseBot)
+		{
+			moveCursor(2, NOTICE_COL);
+			Coordinate suggest = getSuggestion(TurnCounter % 2 + 1);
+			cout << suggest.Row << " " << suggest.Col;
+		}
 	}
 
 	void printMap()
@@ -427,10 +474,10 @@ struct Map
 		cout << " moves\n";
 	}
 
-	int getAndUpdateVertical(int x, int y, int direct = 1, bool AllowEdit = true)
+	int getAndUpdateVertical(int x, int y, int direct = 1, int CurrentPlayer = -1, bool AllowEdit = true)
 	{
 		int res = 0;
-		int CurrentPlayer = Grid[x][y].CurrentPlayer;
+		if (CurrentPlayer == -1) CurrentPlayer = Grid[x][y].CurrentPlayer;
 		if (CurrentPlayer == -1) return 0;
 		for (int i = 1; i < WiningCounter; ++i)
 		{
@@ -444,10 +491,10 @@ struct Map
 		}
 		return res;
 	}
-	int getAndUpdateHorizontal(int x, int y, int direct = 1, bool AllowEdit = true)
+	int getAndUpdateHorizontal(int x, int y, int direct = 1, int CurrentPlayer = -1, bool AllowEdit = true)
 	{
 		int res = 0;
-		int CurrentPlayer = Grid[x][y].CurrentPlayer;
+		if (CurrentPlayer == -1) CurrentPlayer = Grid[x][y].CurrentPlayer;
 		if (CurrentPlayer == -1) return 0;
 		for (int i = 1; i < WiningCounter; ++i)
 		{
@@ -461,10 +508,10 @@ struct Map
 		}
 		return res;
 	}
-	int getAndUpdateMainDiagonal(int x, int y, int direct = 1, bool AllowEdit = true)
+	int getAndUpdateMainDiagonal(int x, int y, int direct = 1, int CurrentPlayer = -1, bool AllowEdit = true)
 	{
 		int res = 0;
-		int CurrentPlayer = Grid[x][y].CurrentPlayer;
+		if (CurrentPlayer == -1) CurrentPlayer = Grid[x][y].CurrentPlayer;
 		if (CurrentPlayer == -1) return 0;
 		for (int i = 1; i < WiningCounter; ++i)
 		{
@@ -478,10 +525,10 @@ struct Map
 		}
 		return res;
 	}
-	int getAndUpdateOppositeDiagonal(int x, int y, int direct = 1, bool AllowEdit = true)
+	int getAndUpdateOppositeDiagonal(int x, int y, int direct = 1, int CurrentPlayer = -1, bool AllowEdit = true)
 	{
 		int res = 0;
-		int CurrentPlayer = Grid[x][y].CurrentPlayer;
+		if (CurrentPlayer == -1) CurrentPlayer = Grid[x][y].CurrentPlayer;
 		if (CurrentPlayer == -1) return 0;
 		for (int i = 1; i < WiningCounter; ++i)
 		{
@@ -496,37 +543,38 @@ struct Map
 		return res;
 	}
 
-	bool UpdateState()
+	bool UpdateState(int row, int col)
 	{
-		Grid[CurrentRow][CurrentCol].Top = getAndUpdateVertical(CurrentRow, CurrentCol, -1);
-		Grid[CurrentRow][CurrentCol].Bottom = getAndUpdateVertical(CurrentRow, CurrentCol, 1);
-		Grid[CurrentRow][CurrentCol].Left = getAndUpdateHorizontal(CurrentRow, CurrentCol, -1);
-		Grid[CurrentRow][CurrentCol].Right = getAndUpdateHorizontal(CurrentRow, CurrentCol, 1);
-		Grid[CurrentRow][CurrentCol].TopLeft = getAndUpdateMainDiagonal(CurrentRow, CurrentCol, -1);
-		Grid[CurrentRow][CurrentCol].BottomRight = getAndUpdateMainDiagonal(CurrentRow, CurrentCol, 1);
-		Grid[CurrentRow][CurrentCol].TopRight = getAndUpdateOppositeDiagonal(CurrentRow, CurrentCol, -1);
-		Grid[CurrentRow][CurrentCol].BottomLeft = getAndUpdateOppositeDiagonal(CurrentRow, CurrentCol, 1);
-		if (Grid[CurrentRow][CurrentCol].Top + Grid[CurrentRow][CurrentCol].Bottom + 1 >= WiningCounter) return true;
-		if (Grid[CurrentRow][CurrentCol].Left + Grid[CurrentRow][CurrentCol].Right + 1 >= WiningCounter) return true;
-		if (Grid[CurrentRow][CurrentCol].TopLeft + Grid[CurrentRow][CurrentCol].BottomRight + 1 >= WiningCounter) return true;
-		if (Grid[CurrentRow][CurrentCol].TopRight + Grid[CurrentRow][CurrentCol].BottomLeft + 1 >= WiningCounter) return true;
+		Grid[row][col].Top = getAndUpdateVertical(row, col, -1);
+		Grid[row][col].Bottom = getAndUpdateVertical(row, col, 1);
+		Grid[row][col].Left = getAndUpdateHorizontal(row, col, -1);
+		Grid[row][col].Right = getAndUpdateHorizontal(row, col, 1);
+		Grid[row][col].TopLeft = getAndUpdateMainDiagonal(row, col, -1);
+		Grid[row][col].BottomRight = getAndUpdateMainDiagonal(row, col, 1);
+		Grid[row][col].TopRight = getAndUpdateOppositeDiagonal(row, col, -1);
+		Grid[row][col].BottomLeft = getAndUpdateOppositeDiagonal(row, col, 1);
+		if (Grid[row][col].Top + Grid[row][col].Bottom + 1 >= WiningCounter) return true;
+		if (Grid[row][col].Left + Grid[row][col].Right + 1 >= WiningCounter) return true;
+		if (Grid[row][col].TopLeft + Grid[row][col].BottomRight + 1 >= WiningCounter) return true;
+		if (Grid[row][col].TopRight + Grid[row][col].BottomLeft + 1 >= WiningCounter) return true;
 		return false;
 	}
 
-	void selectPoint()
+	bool selectPoint(int row, int col, bool UseBot = false)
 	{
 		int playerid = TurnCounter % 2;
-		if (Grid[CurrentRow][CurrentCol].CurrentPlayer != -1) return;
-		moveCursor(Grid[CurrentRow][CurrentCol].DisplayRow + 2, Grid[CurrentRow][CurrentCol].DisplayCol + 2);
+		if (Grid[row][col].CurrentPlayer != -1) return false;
+		moveCursor(Grid[row][col].DisplayRow + 2, Grid[row][col].DisplayCol + 2);
 		setColor(BLACK, PlayerColor[playerid]);
 		cout << Player[playerid];
-		Grid[CurrentRow][CurrentCol].CurrentPlayer = playerid;
+		Grid[row][col].CurrentPlayer = playerid;
 		setColor(BLACK, WHITE);
 		
-		if (UpdateState())
+		if (UpdateState(row, col))
 		{
 			WinnerID = playerid;
 			printWinnerMessage();
+			return false;
 		}
 		else
 		{			
@@ -536,13 +584,150 @@ struct Map
 				moveCursor(RowSize * ROW_SIZE + 1, 0);
 				cout << "The game is tie!\n";
 				WinnerID = 3;
-				return;
+				return false;
 			}
-			printNotice();
+			printNotice(UseBot);
 		}
+		return true;
 	}
 
-	void navigateToPoint()
+	Coordinate getSuggestion(int id)
+	{
+		int take = -1;
+		Coordinate prevent = Coordinate(0,0), attack = Coordinate(0, 0);
+		int chance_prevent = 0, chance_attack = 0;
+		int top, left, right, bottom, topleft, topright, bottomleft, bottomright;
+		
+		//find attack
+		for (int i = 1; i <= RowSize; ++i)
+		{
+			for (int j = 1; j <= ColSize; ++j)
+			{
+				if (Grid[i][j].CurrentPlayer != -1) continue;
+				top = getAndUpdateVertical(i, j, -1, id, false);
+				bottom = getAndUpdateVertical(i, j, 1, id, false);
+				left = getAndUpdateHorizontal(i, j, -1, id, false);
+				right = getAndUpdateHorizontal(i, j, 1, id, false);
+				topleft = getAndUpdateMainDiagonal(i, j, -1, id, false);
+				bottomright = getAndUpdateMainDiagonal(i, j, 1, id, false);
+				topright = getAndUpdateOppositeDiagonal(i, j, -1, id, false);
+				bottomleft = getAndUpdateOppositeDiagonal(i, j, 1, id, false);
+				take = getRandomNumber(0, 100) % 2;
+				if (top + bottom + 1 > chance_attack)
+				{
+					chance_attack = top + bottom + 1;
+					attack = Coordinate(i, j);
+				}
+				else if (top + bottom + 1 == chance_attack && take)
+				{
+					chance_attack = top + bottom + 1;
+					attack = Coordinate(i, j);
+				}
+				else if (left + right + 1 > chance_attack)
+				{
+					chance_attack = left + right + 1;
+					attack = Coordinate(i, j);
+				}
+				else if (left + right + 1 == chance_attack && take)
+				{
+					chance_attack = left + right + 1;
+					attack = Coordinate(i, j);
+				}
+				else if (topleft + bottomright + 1 > chance_attack)
+				{
+					chance_attack = topleft + bottomright + 1;
+					attack = Coordinate(i, j);
+				}
+				else if (topleft + bottomright + 1 == chance_attack && take)
+				{
+					chance_attack = topleft + bottomright + 1;
+					attack = Coordinate(i, j);
+				}
+				else if (topright + bottomleft + 1 > chance_attack)
+				{
+					chance_attack = topright + bottomleft + 1;
+					attack = Coordinate(i, j);
+				}
+				else if (topright + bottomleft + 1 == chance_attack && take)
+				{
+					chance_attack = topright + bottomleft + 1;
+					attack = Coordinate(i, j);
+				}
+			}
+		}
+
+		//find prevent
+		for (int i = 1; i <= RowSize; ++i)
+		{
+			for (int j = 1; j <= ColSize; ++j)
+			{
+				if (Grid[i][j].CurrentPlayer != -1) continue;
+				top = getAndUpdateVertical(i, j, -1, (id + 1) % 2, false);
+				bottom = getAndUpdateVertical(i, j, 1, (id + 1) % 2, false);
+				left = getAndUpdateHorizontal(i, j, -1, (id + 1) % 2, false);
+				right = getAndUpdateHorizontal(i, j, 1, (id + 1) % 2, false);
+				topleft = getAndUpdateMainDiagonal(i, j, -1, (id + 1) % 2, false);
+				bottomright = getAndUpdateMainDiagonal(i, j, 1, (id + 1) % 2, false);
+				topright = getAndUpdateOppositeDiagonal(i, j, -1, (id + 1) % 2, false);
+				bottomleft = getAndUpdateOppositeDiagonal(i, j, 1, (id + 1) % 2, false);
+				take = getRandomNumber(0, 100) % 2;
+				if (top + bottom + 1 > chance_prevent)
+				{
+					chance_prevent = top + bottom + 1;
+					prevent = Coordinate(i, j);
+				}
+				else if (top + bottom + 1 == chance_prevent && take)
+				{
+					chance_prevent = top + bottom + 1;
+					prevent = Coordinate(i, j);
+				}
+				else if (left + right + 1 > chance_prevent)
+				{
+					chance_prevent = left + right + 1;
+					prevent = Coordinate(i, j);
+				}
+				else if (left + right + 1 == chance_prevent && take)
+				{
+					chance_prevent = left + right + 1;
+					prevent = Coordinate(i, j);
+				}
+				else if (topleft + bottomright + 1 > chance_prevent)
+				{
+					chance_prevent = topleft + bottomright + 1;
+					prevent = Coordinate(i, j);
+				}
+				else if (topleft + bottomright + 1 == chance_prevent && take)
+				{
+					chance_prevent = topleft + bottomright + 1;
+					prevent = Coordinate(i, j);
+				}
+				else if (topright + bottomleft + 1 > chance_prevent)
+				{
+					chance_prevent = topright + bottomleft + 1;
+					prevent = Coordinate(i, j);
+				}
+				else if (topright + bottomleft + 1 == chance_prevent && take)
+				{
+					chance_prevent = topright + bottomleft + 1;
+					prevent = Coordinate(i, j);
+				}
+			}
+		}
+	
+		if (chance_attack >= WiningCounter - 1 && chance_prevent < chance_attack)
+			return attack;
+		if (chance_prevent >= WiningCounter - 1)
+			return prevent;
+		if (chance_attack > chance_prevent) return attack;
+		else if (chance_attack == chance_prevent)
+		{
+			if (getRandomNumber(0, 1)) return attack;
+			else return prevent;
+		}
+		else return prevent;
+	}
+
+	void navigateToPoint(bool UseBot = false)
 	{
 		while (true)
 		{
@@ -572,7 +757,12 @@ struct Map
 			}
 			else if (c == '\n' || c == '\r' || c == ' ')
 			{
-				selectPoint();
+				bool canSelect = selectPoint(CurrentRow, CurrentCol);
+				if (canSelect && UseBot && WinnerID == -1)
+				{
+					Coordinate destination = getSuggestion(1);
+					selectPoint(destination.Row, destination.Col, UseBot);
+				}
 			}
 			else
 			{
@@ -611,11 +801,45 @@ bool playMultiplayerGame() // return true if player want to play again
 	test.getWiningCounter();
 	test.getPlayerInfo(0);
 	test.getPlayerInfo(1);
+	StartMultiGame:
 	test.printMap();
 	test.navigateToPoint();
 	cout << "Press R KEY if you want to replay! ";
 	restart = _getch();
-	if (restart == 'R' || restart == 'r') return true;
+	if (restart == 'R' || restart == 'r')
+	{
+		test.Initialize();
+		goto StartMultiGame;
+	}
+	else return false;
+}
+
+bool playSingleGame() // return true if player want to play again
+{
+	//change windows size
+	changeWindows(WINDOWS_HEGHT, WINDOWS_WIDTH);
+	char restart;
+
+	system("cls");
+	cout << "Welcome you to play my game\n";
+	cout << "You can use A,W,S,D or ARROW KEY to move around the board\n";
+	cout << "You can use SPACE or ENTER to place your symbol on the board\n";
+	Map test = Map();
+	test.getWiningCounter();
+	test.getPlayerInfo(0);
+	char botname[] = { ' ', ' ','B', 'O', 'T',' ', ' ','\0'};
+	test.setPlayerInfo(1, botname, ((test.PlayerColor[0] + 1) % 16) + 1);
+
+StartSingleGame:
+	test.printMap();
+	test.navigateToPoint(true);
+	cout << "Press R KEY if you want to replay! ";
+	restart = _getch();
+	if (restart == 'R' || restart == 'r')
+	{
+		test.Initialize();
+		goto StartSingleGame;
+	}
 	else return false;
 }
 
@@ -687,9 +911,11 @@ int printGameModeSelection()
 			switch (c)
 			{
 			case KEY_UP:
+				pre = pos;
 				pos = abs((pos - 1) % 2);
 				break;
 			case KEY_DOWN:
+				pre = pos;
 				pos = abs((pos + 1) % 2);
 				break;
 			}
@@ -704,13 +930,8 @@ int printGameModeSelection()
 Point Grid[MAX_ROW][MAX_COL];
 int n = 0;
 
-
-
-
 int main()
 {
-
-
 	//Disable selection
 	
 	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE); 
@@ -720,6 +941,8 @@ int main()
 	switch (mode)
 	{
 	case 0:
+		if (playSingleGame())
+			goto Starting;
 		break;
 	case 1:
 		if (playMultiplayerGame())
