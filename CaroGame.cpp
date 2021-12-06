@@ -1,10 +1,7 @@
 #include <iostream>
 #include <Windows.h>
 #include <fstream>
-#include <cstdio>
 #include <cstring>
-#include <cstdlib>
-#include <ctime>
 #include <conio.h>  
 
 using std::cin;
@@ -149,10 +146,22 @@ void inputCharArray(char c[],const int max)
 	int i = 0;
 	do
 	{
-		x = cin.get();
-		if (x == '\n' || x == '\r' || x == '\0') break;
-		if (i < max - 1)
+		x = _getch();
+		if (x == '\n' || x == '\r' || x == '\0')
 		{
+			cout << '\n';
+			break;
+		}
+		if (x == '\b' && i > 0)
+		{
+			cout << x;
+			cout << ' ';
+			cout << x;
+			i--;
+		}
+		else if (x != '\b' && i < max - 1)
+		{
+			cout << x;
 			c[i] = x;
 			i++;
 		}
@@ -425,8 +434,63 @@ struct Map
 		if (CurrentPlayer == -1) return 0;
 		for (int i = 1; i < WiningCounter; ++i)
 		{
-			if (Grid[x + i * direct][y].CurrentPlayer == -1) break;
-			if ()
+			if (Grid[x + i * direct][y].CurrentPlayer != CurrentPlayer) break;
+			if (AllowEdit)
+			{
+				if (direct > 0) Grid[x + i * direct][y].Top = res + 1;
+				else Grid[x + i * direct][y].Bottom = res + 1;
+			}
+			res++;
+		}
+		return res;
+	}
+	int getAndUpdateHorizontal(int x, int y, int direct = 1, bool AllowEdit = true)
+	{
+		int res = 0;
+		int CurrentPlayer = Grid[x][y].CurrentPlayer;
+		if (CurrentPlayer == -1) return 0;
+		for (int i = 1; i < WiningCounter; ++i)
+		{
+			if (Grid[x][y + i * direct].CurrentPlayer != CurrentPlayer) break;
+			if (AllowEdit)
+			{
+				if (direct > 0) Grid[x][y + i * direct].Right = res + 1;
+				else Grid[x][y + i * direct].Left = res + 1;
+			}
+			res++;
+		}
+		return res;
+	}
+	int getAndUpdateMainDiagonal(int x, int y, int direct = 1, bool AllowEdit = true)
+	{
+		int res = 0;
+		int CurrentPlayer = Grid[x][y].CurrentPlayer;
+		if (CurrentPlayer == -1) return 0;
+		for (int i = 1; i < WiningCounter; ++i)
+		{
+			if (Grid[x + i * direct][y + i * direct].CurrentPlayer != CurrentPlayer) break;
+			if (AllowEdit)
+			{
+				if (direct > 0) Grid[x + i * direct][y + i * direct].TopLeft = res + 1;
+				else Grid[x + i * direct][y + i * direct].BottomRight = res + 1;
+			}
+			res++;
+		}
+		return res;
+	}
+	int getAndUpdateOppositeDiagonal(int x, int y, int direct = 1, bool AllowEdit = true)
+	{
+		int res = 0;
+		int CurrentPlayer = Grid[x][y].CurrentPlayer;
+		if (CurrentPlayer == -1) return 0;
+		for (int i = 1; i < WiningCounter; ++i)
+		{
+			if (Grid[x + i * direct][y - i * direct].CurrentPlayer != CurrentPlayer) break;
+			if (AllowEdit)
+			{
+				if (direct > 0) Grid[x + i * direct][y - i * direct].TopRight = res + 1;
+				else Grid[x + i * direct][y - i * direct].BottomLeft = res + 1;
+			}
 			res++;
 		}
 		return res;
@@ -434,15 +498,18 @@ struct Map
 
 	bool UpdateState()
 	{
-		for (int i = 1; i <= RowSize; ++i)
-		{
-			for (int j = 1; j <= ColSize; ++j)
-			{
-				int CurrentPlayer = Grid[i][j].CurrentPlayer;
-				if (CurrentPlayer < 0) continue;
-				
-			}
-		}
+		Grid[CurrentRow][CurrentCol].Top = getAndUpdateVertical(CurrentRow, CurrentCol, -1);
+		Grid[CurrentRow][CurrentCol].Bottom = getAndUpdateVertical(CurrentRow, CurrentCol, 1);
+		Grid[CurrentRow][CurrentCol].Left = getAndUpdateHorizontal(CurrentRow, CurrentCol, -1);
+		Grid[CurrentRow][CurrentCol].Right = getAndUpdateHorizontal(CurrentRow, CurrentCol, 1);
+		Grid[CurrentRow][CurrentCol].TopLeft = getAndUpdateMainDiagonal(CurrentRow, CurrentCol, -1);
+		Grid[CurrentRow][CurrentCol].BottomRight = getAndUpdateMainDiagonal(CurrentRow, CurrentCol, 1);
+		Grid[CurrentRow][CurrentCol].TopRight = getAndUpdateOppositeDiagonal(CurrentRow, CurrentCol, -1);
+		Grid[CurrentRow][CurrentCol].BottomLeft = getAndUpdateOppositeDiagonal(CurrentRow, CurrentCol, 1);
+		if (Grid[CurrentRow][CurrentCol].Top + Grid[CurrentRow][CurrentCol].Bottom + 1 >= WiningCounter) return true;
+		if (Grid[CurrentRow][CurrentCol].Left + Grid[CurrentRow][CurrentCol].Right + 1 >= WiningCounter) return true;
+		if (Grid[CurrentRow][CurrentCol].TopLeft + Grid[CurrentRow][CurrentCol].BottomRight + 1 >= WiningCounter) return true;
+		if (Grid[CurrentRow][CurrentCol].TopRight + Grid[CurrentRow][CurrentCol].BottomLeft + 1 >= WiningCounter) return true;
 		return false;
 	}
 
@@ -645,7 +712,7 @@ int main()
 
 
 	//Disable selection
-	/*
+	
 	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE); 
 
 	Starting:
@@ -658,6 +725,6 @@ int main()
 		if (playMultiplayerGame())
 			goto Starting;
 		break;
-	}/*/
+	}
 	return 0;
 }
