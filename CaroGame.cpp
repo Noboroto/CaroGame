@@ -876,6 +876,12 @@ int printGameModeSelection()
 	const int col = 36;
 	int pos = 0;
 	int pre = 0;
+	moveCursor(LastRow, col - 11);
+	cout << "Use W,A,S,D or ARROW KEY to move around";
+	LastRow++;
+	moveCursor(LastRow, col - 7);
+	cout << "Use ENTER to select or confirm"; 
+	LastRow += 2;
 	moveCursor(LastRow, col);
 	cout << "Singleplayer Mode";
 	moveCursor(LastRow + 2, col);
