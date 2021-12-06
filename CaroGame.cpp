@@ -714,7 +714,7 @@ struct Map
 			}
 		}
 	
-		if (chance_attack >= WiningCounter - 1 && chance_prevent < chance_attack)
+		if (chance_attack >= WiningCounter)
 			return attack;
 		if (chance_prevent >= WiningCounter - 1)
 			return prevent;
