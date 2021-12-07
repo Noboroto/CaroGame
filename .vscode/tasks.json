@@ -1,0 +1,49 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "CPP build active file",
+            "command": "C:\\TDM-GCC-64\\bin\\g++.exe",
+            "args": [
+                "-g",
+                "-std=c++14",
+                "${fileDirname}\\${fileBasenameNoExtension}.cpp",
+                "-pipe",
+                "-o",
+                "${fileDirname}\\${fileBasenameNoExtension}"
+            ],
+            "options": {
+                "cwd": "C:\\TDM-GCC-64\\bin"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "shell",
+            "label": "measure",
+            "command": "powershell -Command ",
+            "args": [
+                "\"Measure-Command ",
+                "{",
+                "'${fileBasenameNoExtension}.exe'",
+                "}\""
+            ],
+            "dependsOn":"CPP build active file",
+            "options": {
+                "cwd": "${fileDirname}"
+            },
+            "problemMatcher": []
+        },
+        {
+            "type": "shell",
+            "label": "Run ActiveFile",
+            "command": "${fileBasenameNoExtension}.exe",
+            "options": {
+                "cwd": "${fileDirname}"
+            }
+        }
+    ]
+}
