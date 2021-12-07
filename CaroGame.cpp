@@ -24,16 +24,16 @@ const int KEY_LEFT = 75;
 const int KEY_RIGHT = 77;
 
 //LIMITATION
-const int MAX_ROW = 12;
-const int MAX_COL = 12;
+const int MAX_PAS = 10;
+const int MAX_ROW = 14;
+const int MAX_COL = 18;
 const int SPACE_BETWEEN_POINT = 2;
 const int NAME_DISPLAY = 8;
 const int COL_SIZE = 9;
 const int ROW_SIZE = 5;
 const int MAX_ACCOUNT = 100;
-const int NOTICE_SIZE = 1;
-const int NOTICE_COL = (COL_SIZE + 2) * (MAX_COL - 2) + 1;
-const int WINDOWS_WIDTH = (COL_SIZE + 2) * (MAX_COL - 2) + NAME_DISPLAY - 1 + NOTICE_SIZE;
+const int NOTICE_SIZE = 8;
+const int WINDOWS_WIDTH = (COL_SIZE + 2) * (MAX_COL - 2) + NAME_DISPLAY - 1 + 1;
 const int WINDOWS_HEGHT = ROW_SIZE * (MAX_ROW - 2) + 2;
 
 
@@ -42,6 +42,7 @@ bool isSingleMode = false;
 HANDLE OutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 HANDLE InHamdle = GetStdHandle(STD_INPUT_HANDLE);
 COORD CursorPosition;
+int Notice_Col = 0;
 
 struct Coordinate
 {
@@ -56,6 +57,7 @@ struct Coordinate
 struct Player
 {
 	char Username[NAME_DISPLAY + 1];
+	char Password[MAX_PAS + 1];
 	int Win;
 	int Tie;
 	int Lose;
@@ -63,6 +65,7 @@ struct Player
 	Player(int win = 0, int tie = 0, int Lose = 0)
 	{
 		memset(Username, '\0', NAME_DISPLAY + 1);
+		memset(Password, '\0', MAX_PAS + 1);
 		Win = win;
 		Tie = tie;
 	}
@@ -89,6 +92,7 @@ void loadAccounts()
 	{
 		Accounts_[i] = Player();
 		file >> Accounts_[i].Username;
+		file >> Accounts_[i].Password;
 		file >> Accounts_[i].Win;
 		file >> Accounts_[i].Tie;
 	}
@@ -102,7 +106,8 @@ void saveAccounts()
 	file << AccountCounter_ << '\n';
 	for (int i = 1; i < AccountCounter_; ++i)
 	{
-		file << Accounts_[i].Username << ' ';
+		file << Accounts_[i].Username << '\n';
+		file << Accounts_[i].Password << '\n';
 		file << Accounts_[i].Win << ' ' << Accounts_[i].Tie << '\n';
 	}
 	file.close();
@@ -155,10 +160,20 @@ void changeWindows(int height, int width)
 	NewSize.X = WindowSize.Right;
 	NewSize.Y = WindowSize.Bottom;
 
-	//change windows size
-	SetConsoleWindowInfo(OutHandle, 1, &WindowSize);
 	//change buffer size
 	SetConsoleScreenBufferSize(OutHandle, NewSize);
+	WindowSize.Right = width - 1;
+	WindowSize.Bottom = height - 1;
+	//change windows size
+	SetConsoleWindowInfo(OutHandle, 1, &WindowSize);
+
+	auto hWnd = GetConsoleWindow();
+	HMENU hMenu = GetSystemMenu(hWnd, false);
+
+	//disable changing windows and buffer size
+	SetWindowLong(hWnd, GWL_STYLE, GetWindowLong(hWnd, GWL_STYLE) & ~WS_SIZEBOX);
+	DeleteMenu(hMenu, SC_MAXIMIZE, MF_BYCOMMAND);
+	ShowScrollBar(hWnd, SB_BOTH, false);
 }
 
 void inputCharArray(char c[],const int max)
@@ -281,7 +296,8 @@ struct Map
 
 	int startScreenCol(int colsize = 10)
 	{
-		return (WINDOWS_WIDTH - NAME_DISPLAY - 1 - NOTICE_SIZE - ((colsize + 2) * COL_SIZE)) / 2;
+		return 0;
+		//return (WINDOWS_WIDTH - NAME_DISPLAY - 1 - NOTICE_SIZE - ((colsize + 2) * COL_SIZE)) / 2;
 	}
 
 	void Initialize()
@@ -307,17 +323,17 @@ struct Map
 	{
 		int rowsize = 0, colsize = 0;
 		get_col:
-			cout << "How many column you want to use? (from 3 to 10) ";
+			cout << "How many column you want to use? (from 3 to "<< MAX_COL - 2<<") ";
 			colsize = inputPositiveInteger();
-			if (colsize < 3 || colsize > 10)
+			if (colsize < 3 || colsize > MAX_COL - 2)
 			{
 				cout << "Out of range or wrong format! Please try again!\n";
 				goto get_col;
 			}
 		get_row:
-			cout << "How many row you want to use? (from 3 to 10) ";
+			cout << "How many row you want to use? (from 3 to "<< MAX_ROW - 2<<") ";
 			rowsize = inputPositiveInteger();
-			if (rowsize < 3 || rowsize > 10)
+			if (rowsize < 3 || rowsize > MAX_ROW - 2)
 			{
 				cout << "Out of range or wrong format! Please try again!\n";
 				goto get_row;
@@ -410,33 +426,32 @@ struct Map
 		PlayerColor[id] = colorcode;
 	}
 
-	void printNotice(bool UseBot = false)
+	void printNotice()
 	{
-		moveCursor(0, NOTICE_COL);
+		moveCursor(0, Notice_Col);
 		cout << "         ";
-		moveCursor(0, NOTICE_COL);
+		moveCursor(0, Notice_Col);
 		cout << "Turn " << TurnCounter + 1;
-		moveCursor(1, NOTICE_COL);
+		moveCursor(1, Notice_Col);
 		cout << "         ";
-		moveCursor(1, NOTICE_COL);
+		moveCursor(1, Notice_Col);
 		setColor(BLACK, PlayerColor[TurnCounter % 2]);
 		for (int i = 0; i < strlen(Player[TurnCounter % 2]); ++i)
 		{
 			if (Player[TurnCounter % 2][i] != ' ') cout << Player[TurnCounter % 2][i];
 		}
 		setColor(BLACK, WHITE);
-		if (UseBot)
-		{
-			moveCursor(2, NOTICE_COL);
-			Coordinate suggest = getSuggestion(TurnCounter % 2 + 1);
-			cout << suggest.Row << " " << suggest.Col;
-		}
 	}
 
 	void printMap()
 	{
 		system("cls");
 		showCursor(false);
+		int WindowsRow = ROW_SIZE * RowSize + 2;
+		int WindowsCol = (COL_SIZE + 2) * ColSize + NAME_DISPLAY + 20;
+		Notice_Col = (COL_SIZE + 2) * ColSize + 1;
+
+		changeWindows(WindowsRow, WindowsCol);
 
 		for (int i = 1; i <= RowSize; ++i)
 		{
@@ -560,7 +575,7 @@ struct Map
 		return false;
 	}
 
-	bool selectPoint(int row, int col, bool UseBot = false)
+	bool selectPoint(int row, int col)
 	{
 		int playerid = TurnCounter % 2;
 		if (Grid[row][col].CurrentPlayer != -1) return false;
@@ -586,7 +601,7 @@ struct Map
 				WinnerID = 3;
 				return false;
 			}
-			printNotice(UseBot);
+			printNotice();
 		}
 		return true;
 	}
@@ -623,7 +638,7 @@ struct Map
 					chance_attack = top + bottom + 1;
 					attack = Coordinate(i, j);
 				}
-				else if (left + right + 1 > chance_attack)
+				if (left + right + 1 > chance_attack)
 				{
 					chance_attack = left + right + 1;
 					attack = Coordinate(i, j);
@@ -633,7 +648,7 @@ struct Map
 					chance_attack = left + right + 1;
 					attack = Coordinate(i, j);
 				}
-				else if (topleft + bottomright + 1 > chance_attack)
+				if (topleft + bottomright + 1 > chance_attack)
 				{
 					chance_attack = topleft + bottomright + 1;
 					attack = Coordinate(i, j);
@@ -643,7 +658,7 @@ struct Map
 					chance_attack = topleft + bottomright + 1;
 					attack = Coordinate(i, j);
 				}
-				else if (topright + bottomleft + 1 > chance_attack)
+				if (topright + bottomleft + 1 > chance_attack)
 				{
 					chance_attack = topright + bottomleft + 1;
 					attack = Coordinate(i, j);
@@ -681,7 +696,7 @@ struct Map
 					chance_prevent = top + bottom + 1;
 					prevent = Coordinate(i, j);
 				}
-				else if (left + right + 1 > chance_prevent)
+				if (left + right + 1 > chance_prevent)
 				{
 					chance_prevent = left + right + 1;
 					prevent = Coordinate(i, j);
@@ -691,7 +706,7 @@ struct Map
 					chance_prevent = left + right + 1;
 					prevent = Coordinate(i, j);
 				}
-				else if (topleft + bottomright + 1 > chance_prevent)
+				if (topleft + bottomright + 1 > chance_prevent)
 				{
 					chance_prevent = topleft + bottomright + 1;
 					prevent = Coordinate(i, j);
@@ -701,7 +716,7 @@ struct Map
 					chance_prevent = topleft + bottomright + 1;
 					prevent = Coordinate(i, j);
 				}
-				else if (topright + bottomleft + 1 > chance_prevent)
+				if (topright + bottomleft + 1 > chance_prevent)
 				{
 					chance_prevent = topright + bottomleft + 1;
 					prevent = Coordinate(i, j);
@@ -719,11 +734,6 @@ struct Map
 		if (chance_prevent >= WiningCounter - 1)
 			return prevent;
 		if (chance_attack > chance_prevent) return attack;
-		else if (chance_attack == chance_prevent)
-		{
-			if (getRandomNumber(0, 1)) return attack;
-			else return prevent;
-		}
 		else return prevent;
 	}
 
@@ -761,7 +771,7 @@ struct Map
 				if (canSelect && UseBot && WinnerID == -1)
 				{
 					Coordinate destination = getSuggestion(1);
-					selectPoint(destination.Row, destination.Col, UseBot);
+					selectPoint(destination.Row, destination.Col);
 				}
 			}
 			else
@@ -794,9 +804,6 @@ bool playMultiplayerGame() // return true if player want to play again
 	char restart;
 
 	system("cls");
-	cout << "Welcome you to play my game\n";
-	cout << "You can use A,W,S,D or ARROW KEY to move around the board\n";
-	cout << "You can use SPACE or ENTER to place your symbol on the board\n";
 	Map test = Map();
 	test.getWiningCounter();
 	test.getPlayerInfo(0);
@@ -821,14 +828,11 @@ bool playSingleGame() // return true if player want to play again
 	char restart;
 
 	system("cls");
-	cout << "Welcome you to play my game\n";
-	cout << "You can use A,W,S,D or ARROW KEY to move around the board\n";
-	cout << "You can use SPACE or ENTER to place your symbol on the board\n";
 	Map test = Map();
 	test.getWiningCounter();
 	test.getPlayerInfo(0);
 	char botname[] = { ' ', ' ','B', 'O', 'T',' ', ' ','\0'};
-	test.setPlayerInfo(1, botname, ((test.PlayerColor[0] + 1) % 16) + 1);
+	test.setPlayerInfo(1, botname, ((test.PlayerColor[0] + 1) % 15) + 1);
 
 StartSingleGame:
 	test.printMap();
@@ -846,7 +850,7 @@ StartSingleGame:
 int printName()
 {
 	//change windows size
-	changeWindows(36, 90);
+	changeWindows(36 ,90);
 	int i = 5;
 	const int col = 7;
 	moveCursor(i, col);
@@ -876,6 +880,9 @@ int printGameModeSelection()
 	const int col = 36;
 	int pos = 0;
 	int pre = 0;
+	moveCursor(LastRow, col - 19);
+	cout << "Please only use English Typing for the best experience";
+	LastRow++;
 	moveCursor(LastRow, col - 11);
 	cout << "Use W,A,S,D or ARROW KEY to move around";
 	LastRow++;
