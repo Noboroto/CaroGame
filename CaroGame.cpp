@@ -46,13 +46,36 @@ HANDLE InHamdle = GetStdHandle(STD_INPUT_HANDLE);
 COORD CursorPosition;
 int Notice_Col = 0;
 
+
+
 struct Coordinate
 {
-	int Row = 0, Col = 0;
-	Coordinate(int row = 0, int col = 0)
+	int Row = 0, Col = 0, Turn = 0;
+	Coordinate(int row = 0, int col = 0, int t = 0)
 	{
 		Row = row;
 		Col = col;
+		Turn = t;
+	}
+};
+
+struct CoordinateStack
+{
+	Coordinate Root[MAX_COL * MAX_ROW];
+	int Size = 0;
+	void push(Coordinate item)
+	{
+		Root[Size] = item;
+		Size++;
+	}
+	Coordinate pop()
+	{
+		Size--;
+		return (Root[Size]);
+	}
+	void clear()
+	{
+		Size = 0;
 	}
 };
 
@@ -136,11 +159,11 @@ void removeAccount(char name[])
 			break;
 		}
 	}
+	AccountCounter_--;
 	for (int i = id; i < AccountCounter_; ++i)
 	{
 		Accounts_[i] = Accounts_[i + 1];
 	}
-	AccountCounter_--;
 	saveAccounts();
 }
 
@@ -232,7 +255,7 @@ void changeWindows(int height, int width)
 	ShowScrollBar(hWnd, SB_BOTH, false);
 }
 
-void inputCharArray(char c[],const int max, char hide = '\0')
+void inputCharArray(char c[], const int max, char hide = '\0')
 {
 	char x;
 	int i = strlen(c);
@@ -269,7 +292,7 @@ void inputCharArray(char c[],const int max, char hide = '\0')
 	showCursor(false);
 }
 
-int inputPositiveInteger()
+int inputPositiveInteger(int from, int to)
 {
 	char c;
 	int res = 0;
@@ -278,8 +301,11 @@ int inputPositiveInteger()
 		c = _getch();
 		if (c >= '0' && c <= '9')
 		{
-			res = res * 10 + (c - '0');
-			cout << c;
+			if ((res * 10 + (c - '0') <= to))
+			{
+				res = res * 10 + (c - '0');
+				cout << c;
+			}
 		}
 		else if (c == '\b')
 		{
@@ -288,7 +314,7 @@ int inputPositiveInteger()
 			cout << ' ';
 			cout << c;
 		}
-	} while (c != '\n' && c != '\r');
+	} while ((c != '\n' && c != '\r') || res < from);
 	cout << '\n';
 	return res;
 }
@@ -341,6 +367,8 @@ struct Point
 
 struct Map
 {
+	CoordinateStack MoveOfAll;
+	Coordinate Suggestion;
 	Point Grid[MAX_ROW][MAX_COL];
 	char Player[2][NAME_DISPLAY];
 	int PlayerColor[2];
@@ -367,6 +395,8 @@ struct Map
 		TurnCounter = 0;
 		CurrentRow = 1;
 		CurrentCol = 1;
+		MoveOfAll.clear();
+		Suggestion = Coordinate(-1, -1);
 		for (int i = 1; i <= RowSize; ++i)
 		{
 			Grid[i][1] = Point(y, startX);
@@ -381,22 +411,10 @@ struct Map
 	Map()
 	{
 		int rowsize = 0, colsize = 0;
-		get_col:
-			cout << "How many column you want to use? (from 3 to "<< MAX_COL - 2<<") ";
-			colsize = inputPositiveInteger();
-			if (colsize < 3 || colsize > MAX_COL - 2)
-			{
-				cout << "Out of range or wrong format! Please try again!\n";
-				goto get_col;
-			}
-		get_row:
-			cout << "How many row you want to use? (from 3 to "<< MAX_ROW - 2<<") ";
-			rowsize = inputPositiveInteger();
-			if (rowsize < 3 || rowsize > MAX_ROW - 2)
-			{
-				cout << "Out of range or wrong format! Please try again!\n";
-				goto get_row;
-			}
+		cout << "How many column you want to use? (from 3 to " << MAX_COL - 2 << ") ";
+		colsize = inputPositiveInteger(3, MAX_COL - 2);
+		cout << "How many row you want to use? (from 3 to " << MAX_ROW - 2 << ") ";
+		rowsize = inputPositiveInteger(3, MAX_ROW - 2);
 		RowSize = rowsize;
 		ColSize = colsize;
 		Initialize();
@@ -431,14 +449,8 @@ struct Map
 	void getWiningCounter()
 	{
 		if (min(ColSize, RowSize) == WiningCounter) return;
-		wining_move:
 		cout << "How many continuous point to win? (from 3 to " << min(ColSize, RowSize) << ") ";
-		int selection = inputPositiveInteger();
-		if (selection < WiningCounter || selection > min(ColSize, RowSize))
-		{
-			cout << "Out of range or wrong format! Please try again!\n";
-			goto wining_move;
-		}
+		int selection = inputPositiveInteger(WiningCounter, min(ColSize, RowSize));
 		WiningCounter = selection;
 	}
 
@@ -452,7 +464,7 @@ struct Map
 		if (n < NAME_DISPLAY - 1)
 		{
 			char tmp[NAME_DISPLAY];
-			strcpy_s(tmp,Player[id]);
+			strcpy_s(tmp, Player[id]);
 			for (int i = 0; i < NAME_DISPLAY - 1; ++i)
 			{
 				Player[id][i] = ' ';
@@ -460,7 +472,6 @@ struct Map
 			Player[id][(NAME_DISPLAY - n) / 2] = '\0';
 			strcat_s(Player[id], tmp);
 		}
-		select_color:
 		cout << "Please select your color by number\n";
 		for (int i = 1; i < MAX_COLOR_CODE; ++i)
 		{
@@ -470,12 +481,7 @@ struct Map
 		setColor(BLACK, WHITE);
 		int ColorCode = -1;
 		cout << '\n';
-		ColorCode = inputPositiveInteger();
-		if (ColorCode < 1 || ColorCode >= MAX_COLOR_CODE)
-		{
-			cout << "Out of range or wrong format! Please try again!\n";
-			goto select_color;
-		}
+		ColorCode = inputPositiveInteger(1, MAX_COLOR_CODE);
 		PlayerColor[id] = ColorCode;
 	}
 
@@ -487,19 +493,39 @@ struct Map
 
 	void printNotice()
 	{
-		moveCursor(0, Notice_Col);
+		int row = 0;
+		moveCursor(row, Notice_Col);
 		cout << "         ";
-		moveCursor(0, Notice_Col);
+		moveCursor(row, Notice_Col);
 		cout << "Turn " << TurnCounter + 1;
-		moveCursor(1, Notice_Col);
+		row++;
+		moveCursor(row, Notice_Col);
 		cout << "         ";
-		moveCursor(1, Notice_Col);
+		moveCursor(row, Notice_Col);
 		setColor(BLACK, PlayerColor[TurnCounter % 2]);
 		for (int i = 0; i < strlen(Player[TurnCounter % 2]); ++i)
 		{
 			if (Player[TurnCounter % 2][i] != ' ') cout << Player[TurnCounter % 2][i];
 		}
+		row++;
 		setColor(BLACK, WHITE);
+		moveCursor(row, Notice_Col);
+		cout << "Press key to: ";
+		row++;
+		moveCursor(row, Notice_Col);
+		cout << "[M] Suggest Move";
+		row++;
+		moveCursor(row, Notice_Col);
+		cout << "[U] Undo";
+		row++;
+		moveCursor(row, Notice_Col);
+		cout << "[R] Replay";
+		row++;
+		moveCursor(row, Notice_Col);
+		cout << "[Q] Return to Main Menu";
+		row++;
+		moveCursor(row, Notice_Col);
+		cout << "[E] Exit game";
 	}
 
 	void printMap()
@@ -545,7 +571,7 @@ struct Map
 		setColor(BLACK, PlayerColor[WinnerID]);
 		cout << counter;
 		setColor(BLACK, WHITE);
-		cout << " moves\n";
+		cout << " moves";
 	}
 
 	int getAndUpdateVertical(int x, int y, int direct = 1, int CurrentPlayer = -1, bool AllowEdit = true)
@@ -643,7 +669,7 @@ struct Map
 		cout << Player[playerid];
 		Grid[row][col].CurrentPlayer = playerid;
 		setColor(BLACK, WHITE);
-		
+
 		if (UpdateState(row, col))
 		{
 			WinnerID = playerid;
@@ -651,7 +677,7 @@ struct Map
 			return false;
 		}
 		else
-		{			
+		{
 			TurnCounter++;
 			if (TurnCounter == RowSize * ColSize)
 			{
@@ -668,10 +694,10 @@ struct Map
 	Coordinate getSuggestion(int id)
 	{
 		int take = -1;
-		Coordinate prevent = Coordinate(0,0), attack = Coordinate(0, 0);
+		Coordinate prevent = Coordinate(0, 0), attack = Coordinate(0, 0);
 		int chance_prevent = 0, chance_attack = 0;
 		int top, left, right, bottom, topleft, topright, bottomleft, bottomright;
-		
+
 		//find attack
 		for (int i = 1; i <= RowSize; ++i)
 		{
@@ -787,7 +813,7 @@ struct Map
 				}
 			}
 		}
-	
+
 		if (chance_attack >= WiningCounter)
 			return attack;
 		if (chance_prevent >= WiningCounter - 1)
@@ -796,11 +822,10 @@ struct Map
 		else return prevent;
 	}
 
-	void navigateToPoint(bool UseBot = false)
+	int navigateToPoint(bool UseBot = false)
 	{
 		while (true)
 		{
-			if (WinnerID != -1) return;
 			char c = _getch();
 			if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
 			{
@@ -822,10 +847,34 @@ struct Map
 				case 'd':
 					moveTo(0, 1);
 					break;
+				case 'M':
+				case 'm':
+					if (WinnerID != -1) continue;
+					Suggestion = getSuggestion(TurnCounter % 2);
+					setColor(BLACK, PlayerColor[TurnCounter % 2]);
+					Grid[Suggestion.Row][Suggestion.Col].drawPoint();
+					setColor(BLACK, WHITE);
+					break;
+				case 'R':
+				case 'r':
+					return 1;
+				case 'Q':
+				case 'q':
+					return 2;
+				case 'E':
+				case 'e':
+					return 0;
 				}
 			}
 			else if (c == '\n' || c == '\r' || c == ' ')
 			{
+				if (WinnerID != -1) continue;
+				if (Suggestion.Row != -1)
+				{
+					setColor(BLACK, WHITE);
+					Grid[Suggestion.Row][Suggestion.Col].drawPoint();
+					Suggestion = Coordinate(-1, -1);
+				}
 				bool canSelect = selectPoint(CurrentRow, CurrentCol);
 				if (canSelect && UseBot && WinnerID == -1)
 				{
@@ -851,33 +900,33 @@ struct Map
 					moveTo(0, 1);
 					break;
 				}
-			}
+			}		
 		}
+		return 0;
 	}
 };
 
 bool playMultiplayerGame() // return true if player want to play again
 {
-	//change windows size
-	changeWindows(WINDOWS_HEGHT, WINDOWS_WIDTH);
-	char restart;
-
 	system("cls");
-	Map test = Map();
-	test.getWiningCounter();
-	test.getPlayerInfo(0);
-	test.getPlayerInfo(1);
-	StartMultiGame:
-	test.printMap();
-	test.navigateToPoint();
-	cout << "Press R KEY if you want to replay! ";
-	restart = _getch();
-	if (restart == 'R' || restart == 'r')
+	Map FullMap = Map();
+	FullMap.getWiningCounter();
+	FullMap.getPlayerInfo(0);
+	FullMap.getPlayerInfo(1);
+
+StartMultiGame:
+	FullMap.Initialize();
+	FullMap.printMap();
+	int result = FullMap.navigateToPoint();
+	switch (result)
 	{
-		test.Initialize();
+	case 1:
 		goto StartMultiGame;
+	case 2:
+		return true;
+	default:
+		return false;
 	}
-	else return false;
 }
 
 bool playSingleGame() // return true if player want to play again
@@ -890,7 +939,7 @@ bool playSingleGame() // return true if player want to play again
 	Map test = Map();
 	test.getWiningCounter();
 	test.getPlayerInfo(0);
-	char botname[] = { ' ', ' ','B', 'O', 'T',' ', ' ','\0'};
+	char botname[] = { ' ', ' ','B', 'O', 'T',' ', ' ','\0' };
 	test.setPlayerInfo(1, botname, ((test.PlayerColor[0] + 1) % 15) + 1);
 
 StartSingleGame:
@@ -909,7 +958,7 @@ StartSingleGame:
 int printName()
 {
 	//change windows size
-	changeWindows(36 ,90);
+	changeWindows(36, 90);
 	int i = 5;
 	const int col = 7;
 	moveCursor(i, col);
@@ -1113,7 +1162,7 @@ int printGameModeSelection()
 	cout << "Use W,A,S,D or ARROW KEY to move around";
 	LastRow++;
 	moveCursor(LastRow, col - 7);
-	cout << "Use ENTER to select or confirm"; 
+	cout << "Use ENTER to select or confirm";
 	LastRow += 2;
 
 	moveCursor(LastRow, col);
@@ -1192,17 +1241,17 @@ int n = 0;
 int main()
 {
 	//Set Title
-	SetConsoleTitle(L"TicTacToe - 21127469");	
+	SetConsoleTitle(L"TicTacToe - 21127469");
 	//Disable selection
-	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE); 
+	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE);
 	loadAccounts();
 
-	Starting:
+Starting:
 	int mode = printGameModeSelection();
 	switch (mode)
 	{
 	case 0:
-		printLogin();
+		if (ActiveID == -1) printLogin();
 		if (playSingleGame())
 			goto Starting;
 		break;
