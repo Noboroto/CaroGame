@@ -494,43 +494,6 @@ struct Map
 		}
 	}
 
-	void getPlayerInfo(int id)
-	{
-		cout << "Please type player " << (id + 1) << " symbol (Max: 7 characters - Default is ";
-		cout << Player[id] << ") ";
-		showCursor(true);
-		inputCharArray(Player[id], NAME_DISPLAY);
-		int n = strlen(Player[id]);
-		if (n < NAME_DISPLAY - 1)
-		{
-			char tmp[NAME_DISPLAY];
-			strcpy_s(tmp, Player[id]);
-			for (int i = 0; i < NAME_DISPLAY - 1; ++i)
-			{
-				Player[id][i] = ' ';
-			}
-			Player[id][(NAME_DISPLAY - n) / 2] = '\0';
-			strcat_s(Player[id], tmp);
-		}
-		cout << "Please select your color by number\n";
-		for (int i = 1; i < MAX_COLOR_CODE; ++i)
-		{
-			setColor(BLACK, i);
-			cout << i << ' ';
-		}
-		setColor(BLACK, WHITE);
-		int ColorCode = -1;
-		cout << '\n';
-		ColorCode = inputPositiveInteger(1, MAX_COLOR_CODE);
-		PlayerColor[id] = ColorCode;
-	}
-
-	void setPlayerInfo(int id, char name[], int colorcode)
-	{
-		strcpy_s(Player[id], name);
-		PlayerColor[id] = colorcode;
-	}
-
 	void printNotice()
 	{
 		int row = 0;
@@ -548,7 +511,14 @@ struct Map
 			if (Player[TurnCounter % 2][i] != ' ')
 				cout << Player[TurnCounter % 2][i];
 		}
-
+		if (TurnRestriction != 0)
+		{
+			setColor(YELLOW, BLACK);
+			row++;
+			moveCursor(row, Notice_Col);
+			cout << "After " << std::max(TurnRestriction - TurnCounter, 0) << " the game will end!";
+			setColor(BLACK, WHITE);
+		}
 		row++;
 		setColor(BLACK, WHITE);
 		moveCursor(row, Notice_Col);
@@ -574,7 +544,7 @@ struct Map
 	{
 		system("cls");
 		showCursor(false);
-		int WindowsRow = ROW_SIZE * RowSize + 2;
+		int WindowsRow = ROW_SIZE * RowSize + 4;
 		int WindowsCol = (COL_SIZE + 2) * ColSize + NAME_DISPLAY + 20;
 		Notice_Col = (COL_SIZE + 2) * ColSize + 1;
 
@@ -741,20 +711,31 @@ struct Map
 		if (UpdateState(row, col))
 		{
 			WinnerID = playerid;
+			if (UseBot)
+			{
+				if (WinnerID == 0) Accounts_[ActiveID].Win++;
+				else Accounts_[ActiveID].Lose++;
+				saveAccounts();
+			}
 			printWinnerMessage();
 			return false;
 		}
 		else
 		{
 			TurnCounter++;
-			if (TurnCounter == RowSize * ColSize)
+			printNotice();
+			if ((TurnRestriction - TurnCounter <= 0 && TurnRestriction != 0)||TurnCounter == RowSize * ColSize)
 			{
 				moveCursor(RowSize * ROW_SIZE + 1, 0);
-				cout << "The game is tie!\n";
+				cout << "The game is tie!";
+				if (UseBot) 
+				{
+					Accounts_[ActiveID].Tie++;
+					saveAccounts();
+				}
 				WinnerID = 3;
 				return false;
-			}
-			printNotice();
+			};
 		}
 		return true;
 	}
@@ -997,7 +978,6 @@ struct Map
 		return 0;
 	}
 };
-
 
 int printName()
 {
@@ -1474,6 +1454,237 @@ bool printMultiSetting(Map &Board)
 	}
 }
 
+bool printSingleSetting(Map &Board)
+{
+	system("cls");
+	showCursor(false);
+	int LastRow = printName() + 4;
+	const int col = 12;
+	int pos = 0;
+	int pre = 0;
+	const int CURSOR_COL = strlen("Time restriction (less or equal than 100, 0 is off):");
+	moveCursor(LastRow, 1);
+	cout << "COLOR CODE\n ";
+	for (int i = 1; i <= MAX_COLOR_CODE; ++i)
+	{
+		setColor(BLACK, i);
+		cout << i << ' ';
+		if (i % 3 == 0) cout << "\n ";
+	}
+	setColor(BLACK, 14);
+	moveCursor(LastRow, col);
+	cout << "Rows (3 to " << MAX_ROW - 2<< "):";
+	moveCursor(LastRow, col + CURSOR_COL + 2);
+	setColor(BLACK, WHITE);
+	cout << '3';
+	setColor(BLACK, 14);
+	moveCursor(LastRow + 2, col);
+	cout << "Columns (3 to " << MAX_COL - 2<< "):";
+	moveCursor(LastRow + 2, col + CURSOR_COL + 2);
+	setColor(BLACK, WHITE);
+	cout << '3';
+	setColor(BLACK, 14);
+	moveCursor(LastRow + 4, col);
+	cout << "Win with (3 to " << min(Board.ColSize, Board.RowSize) <<"):";
+	moveCursor(LastRow + 4, col + CURSOR_COL + 2);
+	setColor(BLACK, WHITE);
+	cout << "3";
+	setColor(BLACK, 14);
+	moveCursor(LastRow + 4, col + CURSOR_COL + 6);
+	cout << "moves";
+	moveCursor(LastRow + 6, col);
+	cout << "Time restriction (less or equal than " << Board.ColSize*Board.RowSize << ", 0 is off):";
+	moveCursor(LastRow + 6, col + CURSOR_COL + 2);
+	setColor(BLACK, WHITE);
+	cout << "0";
+	setColor(BLACK, 14);
+	moveCursor(LastRow + 6, col + CURSOR_COL + 6);
+	cout << "turns";
+	setColor(BLACK, 14);
+	moveCursor(LastRow + 8, col);
+	cout << "Player color:";	
+	moveCursor(LastRow + 8, col + CURSOR_COL + 2);
+	setColor(BLACK, WHITE);
+	cout << "4";
+	setColor(BLACK, 14);
+	moveCursor(LastRow + 10, col);
+	cout << "Background Sound:";
+	setColor(BLACK, WHITE);
+	moveCursor(LastRow + 10, col + CURSOR_COL + 2);
+	cout << "Off";
+
+	setColor(GRAY, BLACK);
+	moveCursor(LastRow + 12, col + 30);
+	cout << " Next ";
+	moveCursor(LastRow + 14, col + 30);
+	cout << " Back ";
+	setColor(BLACK, WHITE);
+	moveCursor(LastRow, col + CURSOR_COL);
+	cout << '>';
+	cout << '\b';
+	while (true)
+	{
+		char c = _getch();
+		if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+		{
+			pre = pos;
+			switch (c)
+			{
+			case 'W':
+			case 'w':
+				if (pos == 0) pos = 8;
+				pos = abs((pos - 1) % 8);
+				break;
+			case 'S':
+			case 's':
+				pos = abs((pos + 1) % 8);
+				break;
+			}
+		}
+		else if (c == '\n' || c == '\r' || c == ' ')
+		{				
+			setColor(BLACK, WHITE);
+			switch (pos)
+			{
+				case 0:
+					showCursor(true);
+					moveCursor(LastRow, col + CURSOR_COL + 2);
+					Board.RowSize = inputPositiveInteger(3, MAX_ROW - 2);
+					showCursor(false);
+					moveCursor(LastRow, col + CURSOR_COL + 2);
+					cout << "  ";
+					moveCursor(LastRow, col + CURSOR_COL + 2);
+					cout << Board.RowSize;
+					setColor(BLACK, 14);
+					moveCursor(LastRow + 4, col);
+					cout << "Win with (3 to " << min(Board.ColSize, Board.RowSize) <<"):";
+					moveCursor(LastRow + 6, col);
+					cout << "Time restriction (less or equal than " << Board.ColSize*Board.RowSize << ", 0 is off):";
+					setColor(BLACK, WHITE);
+					break;
+				case 1:
+					showCursor(true);
+					moveCursor(LastRow + 2, col + CURSOR_COL + 2);
+					Board.ColSize = inputPositiveInteger(3, MAX_COL - 2);
+					showCursor(false);
+					moveCursor(LastRow + 2, col + CURSOR_COL + 2);
+					cout << "  ";
+					moveCursor(LastRow + 2, col + CURSOR_COL + 2);
+					cout << Board.ColSize;
+					setColor(BLACK, 14);
+					moveCursor(LastRow + 4, col);
+					cout << "Win with (3 to " << min(Board.ColSize, Board.RowSize) <<"):";
+					moveCursor(LastRow + 6, col);
+					cout << "Time restriction (less or equal than " << Board.ColSize*Board.RowSize << ", 0 is off):";
+					setColor(BLACK, WHITE);
+					break;
+				case 2:
+					showCursor(true);
+					moveCursor(LastRow + 4, col + CURSOR_COL + 2);
+					Board.WiningCounter = inputPositiveInteger(3,  min(Board.ColSize, Board.RowSize));
+					showCursor(false);					
+					moveCursor(LastRow + 4, col + CURSOR_COL + 2);
+					cout << "  ";
+					moveCursor(LastRow + 4, col + CURSOR_COL + 2);
+					cout << Board.WiningCounter;
+					break;
+				case 3:
+					showCursor(true);
+					moveCursor(LastRow + 6, col + CURSOR_COL + 2);
+					Board.TurnRestriction = inputPositiveInteger(0, Board.ColSize * Board.RowSize);
+					showCursor(false);
+					moveCursor(LastRow + 6, col + CURSOR_COL + 2);
+					cout << "   ";
+					moveCursor(LastRow + 6, col + CURSOR_COL + 2);
+					cout << Board.TurnRestriction;
+					break;
+				case 4:
+					showCursor(true);
+					moveCursor(LastRow + 8, col + CURSOR_COL + 2);
+					Board.PlayerColor[0] = inputPositiveInteger(1, MAX_COLOR_CODE);
+					showCursor(false);
+					moveCursor(LastRow + 8, col + CURSOR_COL + 2);
+					cout << "  ";
+					moveCursor(LastRow + 8, col + CURSOR_COL + 2);
+					cout << Board.PlayerColor[0];
+					break;
+				case 5:
+					moveCursor(LastRow + 10, col + CURSOR_COL + 2);
+					Board.BackgroundSound = !Board.BackgroundSound;
+					if (Board.BackgroundSound) cout << "On ";
+					else cout << "Off";
+					break;
+				case 6:
+					strcpy_s(Board.Player[0], Accounts_[ActiveID].Username);
+					Board.rewriteName(0);
+					strcpy_s(Board.Player[1],"BOT");
+					Board.rewriteName(1);
+					Board.PlayerColor[1] = ((Board.PlayerColor[0] + 1) % MAX_COLOR_CODE) + 1;
+					return false;
+				case 7:
+					return true;
+			}
+		}
+		else
+		{
+			c = _getch();
+			switch (c)
+			{
+			case KEY_UP:
+				pre = pos;
+				if (pos == 0) pos = 8;
+				pos = abs((pos - 1) % 8);
+				break;
+			case KEY_DOWN:
+				pre = pos;
+				pos = abs((pos + 1) % 8);
+				break;
+			}
+		}
+		if (pre < 6)
+		{
+			setColor(BLACK, WHITE);
+			moveCursor(LastRow + pre * 2, col + CURSOR_COL);
+			cout << ' ';
+		}
+		else
+		{
+			moveCursor(LastRow + pre * 2, col + 30);
+			setColor(GRAY, BLACK);
+			switch (pre)
+			{
+			case 6:
+				cout << " Next ";
+				break;
+			case 7:
+				cout << " Back ";
+				break;
+			}
+		}
+		if (pos < 6)
+		{
+			setColor(BLACK, WHITE);
+			moveCursor(LastRow + pos * 2, col + CURSOR_COL);
+			cout << '>';
+		}
+		else
+		{
+			moveCursor(LastRow + pos * 2, col + 30);
+			setColor(GREEN, BLACK);
+			switch (pos)
+			{
+			case 6:
+				cout << " Next ";
+				break;
+			case 7:
+				cout << " Back ";
+				break;
+			}
+		}
+		setColor(BLACK, WHITE);
+	}
+}
+
 int printGameModeSelection()
 {
 	system("cls");
@@ -1498,6 +1709,8 @@ int printGameModeSelection()
 	setColor(GRAY, BLACK);
 	moveCursor(LastRow + 2, col);
 	cout << " Multiplayer Mode  ";
+	moveCursor(LastRow + 4, col);
+	cout << " Exit              ";
 	while (true)
 	{
 		char c = _getch();
@@ -1508,11 +1721,12 @@ int printGameModeSelection()
 			{
 			case 'W':
 			case 'w':
-				pos = abs((pos - 1) % 2);
+				if (pos == 0) pos = 3;
+				pos = abs((pos - 1) % 3);
 				break;
 			case 'S':
 			case 's':
-				pos = abs((pos + 1) % 2);
+				pos = abs((pos + 1) % 3);
 				break;
 			}
 		}
@@ -1528,11 +1742,12 @@ int printGameModeSelection()
 			{
 			case KEY_UP:
 				pre = pos;
-				pos = abs((pos - 1) % 2);
+				if (pos == 0) pos = 3;
+				pos = abs((pos - 1) % 3);
 				break;
 			case KEY_DOWN:
 				pre = pos;
-				pos = abs((pos + 1) % 2);
+				pos = abs((pos + 1) % 3);
 				break;
 			}
 		}
@@ -1546,6 +1761,9 @@ int printGameModeSelection()
 		case 1:
 			cout << " Multiplayer Mode  ";
 			break;
+		case 2:
+			cout << " Exit              ";
+			break;
 		}
 		moveCursor(LastRow + pos * 2, col);
 		setColor(GREEN, BLACK);
@@ -1556,6 +1774,9 @@ int printGameModeSelection()
 			break;
 		case 1:
 			cout << " Multiplayer Mode  ";
+			break;
+		case 2:
+			cout << " Exit              ";
 			break;
 		}
 		setColor(BLACK, WHITE);
@@ -1584,19 +1805,15 @@ StartMultiGame:
 	}
 }
 
-bool playSingleGame() // return true if player want to play again
+int playSingleGame() // return true if player want to play again
 {
-	//change windows size
-	changeWindows(WINDOWS_HEGHT, WINDOWS_WIDTH);
-
 	system("cls");
 	Map FullMap = Map();
-	FullMap.getWiningCounter();
-	FullMap.getPlayerInfo(0);
-	char botname[] = {' ', ' ', 'B', 'O', 'T', ' ', ' ', '\0'};
-	FullMap.setPlayerInfo(1, botname, ((FullMap.PlayerColor[0] + 1) % 15) + 1);
+	if (printSingleSetting(FullMap)) 
+	return -1;
 
 StartSingleGame:
+	FullMap.Initialize();
 	FullMap.printMap();
 	FullMap.UseBot = true;
 	int result = FullMap.navigateToPoint();
@@ -1605,9 +1822,114 @@ StartSingleGame:
 	case 1:
 		goto StartSingleGame;
 	case 2:
-		return true;
+		return 1;
 	default:
-		return false;
+		return 0;
+	}
+}
+
+bool printSinglePlayerMenu()
+{
+	system("cls");
+	showCursor(false);
+	int LastRow = printName() + 6;
+	const int col = 28;
+	int pos = 0;
+	int pre = 0;
+	moveCursor(LastRow, col + 10);
+	setColor(GREEN, BLACK);
+	cout << " Play              ";
+	setColor(GRAY, BLACK);
+	moveCursor(LastRow + 2, col + 10);
+	cout << " Logout            ";
+	moveCursor(LastRow + 4, col + 10);
+	cout << " Back to Main Menu ";
+	setColor(BLACK, YELLOW);
+	moveCursor(LastRow + 6, col + 10);
+	cout << " Won:  " << Accounts_[ActiveID].Win << "  ";
+	moveCursor(LastRow + 7, col + 10);
+	cout << " Tie:  " << Accounts_[ActiveID].Tie << "  ";
+	moveCursor(LastRow + 8, col + 10);
+	cout << " Lose: " << Accounts_[ActiveID].Lose << " ";
+	setColor(BLACK, WHITE);
+	while (true)
+	{
+		char c = _getch();
+		if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+		{
+			pre = pos;
+			switch (c)
+			{
+			case 'W':
+			case 'w':
+				if (pos == 0) pos = 3;
+				pos = abs((pos - 1) % 3);
+				break;
+			case 'S':
+			case 's':
+				pos = abs((pos + 1) % 3);
+				break;
+			}
+		}
+		else if (c == '\n' || c == '\r' || c == ' ')
+		{
+			switch (pos)
+			{
+				case 0:
+					return false;
+				case 1:
+					ActiveID = -1;
+					return true;
+				case 2:
+					return true;
+			}
+		}
+		else
+		{
+			c = _getch();
+			switch (c)
+			{
+			case KEY_UP:
+				pre = pos;
+				if (pos == 0) pos = 3;
+				pos = abs((pos - 1) % 3);
+				break;
+			case KEY_DOWN:
+				pre = pos;
+				if (pos == 0) pos = 3;
+				pos = abs((pos + 1) % 3);
+				break;
+			}
+		}
+		moveCursor(LastRow + pre * 2, col + 10);
+		setColor(GRAY, BLACK);
+		switch (pre)
+		{
+		case 0:
+			cout << " Play              ";
+			break;
+		case 1:
+			cout << " Logout            ";
+			break;
+		case 2:
+			cout << " Back to Main Menu ";
+			break;
+		}
+		moveCursor(LastRow + pos * 2, col + 10);
+		setColor(GREEN, BLACK);
+		switch (pos)
+		{
+		case 0:
+			cout << " Play              ";
+			break;
+		case 1:
+			cout << " Logout            ";
+			break;
+		case 2:
+			cout << " Back to Main Menu ";
+			break;
+		}
+		setColor(BLACK, WHITE);
 	}
 }
 
@@ -1625,12 +1947,30 @@ Starting:
 	switch (mode)
 	{
 	case 0:
+	{
+		Login:
 		if (ActiveID == -1)
+		{
 			if (printLogin())
 				goto Starting;
-		if (playSingleGame())
+		}
+		Menu:
+		if (printSinglePlayerMenu())
+		{
+			if (ActiveID == -1) goto Login;
+			else goto Starting;
+		}
+		int res = playSingleGame();
+		if (res == 1)
+		{
 			goto Starting;
+		}
+		else if (res == -1) 
+		{
+			goto Menu;
+		}
 		break;
+	}
 	case 1:
 		if (playMultiplayerGame())
 			goto Starting;
