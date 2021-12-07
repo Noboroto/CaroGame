@@ -15,6 +15,10 @@ using std::min;
 //COLOR
 const int BLACK = 0;
 const int WHITE = 7;
+const int RED = 4;
+const int GRAY = 8;
+const int GREEN = 2;
+const int YELLOW = 6;
 const int MAX_COLOR_CODE = 16;
 
 //KEY CHAR
@@ -24,7 +28,7 @@ const int KEY_LEFT = 75;
 const int KEY_RIGHT = 77;
 
 //LIMITATION
-const int MAX_PAS = 10;
+const int MAX_PAS = 20;
 const int MAX_ROW = 14;
 const int MAX_COL = 18;
 const int SPACE_BETWEEN_POINT = 2;
@@ -36,8 +40,6 @@ const int NOTICE_SIZE = 8;
 const int WINDOWS_WIDTH = (COL_SIZE + 2) * (MAX_COL - 2) + NAME_DISPLAY - 1 + 1;
 const int WINDOWS_HEGHT = ROW_SIZE * (MAX_ROW - 2) + 2;
 
-
-int UserInputInt_ = 0;
 bool isSingleMode = false;
 HANDLE OutHandle = GetStdHandle(STD_OUTPUT_HANDLE);
 HANDLE InHamdle = GetStdHandle(STD_INPUT_HANDLE);
@@ -74,27 +76,37 @@ struct Player
 	{
 		strcpy_s(Username, name);
 	}
+	void setPassword(char  pass[])
+	{
+		strcpy_s(Password, pass);
+	}
+	bool checkPassword(char pass[])
+	{
+		return !strcmp(Password, pass);
+	}
 };
 
-Player Accounts_[MAX_ACCOUNT];
+Player Accounts_[MAX_ACCOUNT + 1];
 int AccountCounter_ = 0;
+int ActiveID = -1;
 
 void loadAccounts()
 {
 	ifstream file;
 	int counter;
-	file.open("accounts.txt");
+	file.open("accounts.etai");
 	if (file.fail()) return;
 	file >> counter;
-	AccountCounter_ = (counter > 100) ? 100 : counter;
+	AccountCounter_ = (counter > MAX_ACCOUNT) ? MAX_ACCOUNT : counter;
 	AccountCounter_++;
-	for (int i = 1; i < AccountCounter_; ++i)
+	for (int i = 0; i < AccountCounter_; ++i)
 	{
 		Accounts_[i] = Player();
 		file >> Accounts_[i].Username;
 		file >> Accounts_[i].Password;
 		file >> Accounts_[i].Win;
 		file >> Accounts_[i].Tie;
+		file >> Accounts_[i].Lose;
 	}
 	file.close();
 }
@@ -102,21 +114,65 @@ void loadAccounts()
 void saveAccounts()
 {
 	ofstream file;
-	file.open("accounts.txt");
+	file.open("accounts.etai");
 	file << AccountCounter_ << '\n';
-	for (int i = 1; i < AccountCounter_; ++i)
+	for (int i = 0; i < AccountCounter_; ++i)
 	{
 		file << Accounts_[i].Username << '\n';
 		file << Accounts_[i].Password << '\n';
-		file << Accounts_[i].Win << ' ' << Accounts_[i].Tie << '\n';
+		file << Accounts_[i].Win << ' ' << Accounts_[i].Tie << ' ' << Accounts_[i].Lose << '\n';
 	}
 	file.close();
 }
 
-void registerAccount(char name[])
+void removeAccount(char name[])
 {
+	int id = -1;
+	for (int i = 0; i < AccountCounter_; ++i)
+	{
+		if (!strcmp(name, Accounts_[i].Username))
+		{
+			id = i;
+			break;
+		}
+	}
+	for (int i = id; i < AccountCounter_; ++i)
+	{
+		Accounts_[i] = Accounts_[i + 1];
+	}
+	AccountCounter_--;
+	saveAccounts();
+}
+
+bool registerAccount(char name[], char pass[])
+{
+	for (int i = 0; i < AccountCounter_; ++i)
+	{
+		if (!strcmp(name, Accounts_[i].Username)) return false;
+	}
 	Accounts_[AccountCounter_].setName(name);
+	Accounts_[AccountCounter_].setPassword(pass);
+	ActiveID = AccountCounter_;
 	AccountCounter_++;
+	saveAccounts();
+	return true;
+}
+
+int loginAccount(char name[], char pass[])
+{
+	for (int i = 0; i < AccountCounter_; ++i)
+	{
+		if (!strcmp(name, Accounts_[i].Username))
+		{
+			if (Accounts_[i].checkPassword(pass))
+			{
+				ActiveID = i;
+				return 0;
+			}
+			else return 1;
+		}
+	}
+	return -1;
 }
 
 void setColor(int backgound_color, int text_color)
@@ -176,10 +232,16 @@ void changeWindows(int height, int width)
 	ShowScrollBar(hWnd, SB_BOTH, false);
 }
 
-void inputCharArray(char c[],const int max)
+void inputCharArray(char c[],const int max, char hide = '\0')
 {
-	char x, tmp = c[0];
-	int i = 0;
+	char x;
+	int i = strlen(c);
+	if (hide == '\0') cout << c;
+	else
+	{
+		for (int j = 0; j < i; ++j) cout << hide;
+	}
+	showCursor(true);
 	do
 	{
 		x = _getch();
@@ -197,17 +259,14 @@ void inputCharArray(char c[],const int max)
 		}
 		else if (x != '\b' && i < max - 1)
 		{
-			cout << x;
+			if (hide == '\0') cout << x;
+			else cout << hide;
 			c[i] = x;
 			i++;
 		}
 	} while (x != '\n' && x != '\r' && x != '\0');
 	if (i > 0) c[i] = '\0';
-	else if (i == 0)
-	{
-		c[0] = tmp;
-		c[1] = '\0';
-	}
+	showCursor(false);
 }
 
 int inputPositiveInteger()
@@ -872,6 +931,173 @@ int printName()
 	return i;
 }
 
+void printLogin()
+{
+	system("cls");
+	showCursor(false);
+	int LastRow = printName() + 6;
+	const int col = 28;
+	int pos = 0;
+	int pre = 0;
+	char Username[NAME_DISPLAY + 1], Password[MAX_PAS + 1];
+	moveCursor(LastRow, col);
+	cout << "Username:  ";
+	moveCursor(LastRow + 2, col);
+	cout << "Password:  ";
+	moveCursor(LastRow + 4, col + 10);
+	setColor(GRAY, BLACK);
+	cout << " Register ";
+	moveCursor(LastRow + 6, col + 10);
+	cout << " Login    ";
+	moveCursor(LastRow + 8, col + 10);
+	cout << " Remove   ";
+	setColor(BLACK, WHITE);
+	moveCursor(LastRow, col + 10);
+	cout << '>';
+	cout << '\b';
+	Username[0] = '\0';
+	Password[0] = '\0';
+	while (true)
+	{
+		char c = _getch();
+		if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+		{
+			pre = pos;
+			switch (c)
+			{
+			case 'W':
+			case 'w':
+				pos = abs((pos - 1) % 5);
+				break;
+			case 'S':
+			case 's':
+				pos = abs((pos + 1) % 5);
+				break;
+			}
+		}
+		else if (c == '\n' || c == '\r' || c == ' ')
+		{
+			moveCursor(LastRow + 10, col);
+			cout << "                                            ";
+			switch (pos)
+			{
+			case 0:
+				moveCursor(LastRow, col + 11);
+				inputCharArray(Username, NAME_DISPLAY + 1);
+				break;
+			case 1:
+				moveCursor(LastRow + 2, col + 11);
+				inputCharArray(Password, MAX_PAS + 1, '*');
+				break;
+			case 2:
+				if (registerAccount(Username, Password))
+				{
+					return;
+				}
+				else
+				{
+					moveCursor(LastRow + 10, col + 6);
+					setColor(RED, WHITE);
+					cout << " Username exists! ";
+					setColor(BLACK, WHITE);
+				}
+				break;
+			case 3:
+			case 4:
+				switch (loginAccount(Username, Password))
+				{
+				case -1:
+					moveCursor(LastRow + 10, col + 2);
+					setColor(RED, WHITE);
+					cout << " Username does not exists! ";
+					setColor(BLACK, WHITE);
+					break;
+				case 0:
+					if (pos == 4)
+					{
+						removeAccount(Username);
+						moveCursor(LastRow + 10, col + 10);
+						setColor(YELLOW, BLACK);
+						cout << " Removed! ";
+						setColor(BLACK, WHITE);
+						break;
+					}
+					if (pos == 3) return;
+				case 1:
+					moveCursor(LastRow + 10, col + 7);
+					setColor(RED, WHITE);
+					cout << " Wrong password! ";
+					setColor(BLACK, WHITE);
+					break;
+				}
+				break;
+			}
+		}
+		else
+		{
+			c = _getch();
+			switch (c)
+			{
+			case KEY_UP:
+				pre = pos;
+				pos = abs((pos - 1) % 5);
+				break;
+			case KEY_DOWN:
+				pre = pos;
+				pos = abs((pos + 1) % 5);
+				break;
+			}
+		}
+		if (pre < 2)
+		{
+			setColor(BLACK, WHITE);
+			moveCursor(LastRow + pre * 2, col + 10);
+			cout << ' ';
+		}
+		else
+		{
+			moveCursor(LastRow + pre * 2, col + 10);
+			setColor(GRAY, BLACK);
+			switch (pre)
+			{
+			case 2:
+				cout << " Register ";
+				break;
+			case 3:
+				cout << " Login    ";
+				break;
+			case 4:
+				cout << " Remove   ";
+				break;
+			}
+		}
+		if (pos < 2)
+		{
+			setColor(BLACK, WHITE);
+			moveCursor(LastRow + pos * 2, col + 10);
+			cout << '>';
+		}
+		else
+		{
+			moveCursor(LastRow + pos * 2, col + 10);
+			setColor(GREEN, BLACK);
+			switch (pos)
+			{
+			case 2:
+				cout << " Register ";
+				break;
+			case 3:
+				cout << " Login    ";
+				break;
+			case 4:
+				cout << " Remove   ";
+				break;
+			}
+		}
+		setColor(BLACK, WHITE);
+	}
+}
+
 int printGameModeSelection()
 {
 	system("cls");
@@ -889,13 +1115,13 @@ int printGameModeSelection()
 	moveCursor(LastRow, col - 7);
 	cout << "Use ENTER to select or confirm"; 
 	LastRow += 2;
+
 	moveCursor(LastRow, col);
-	cout << "Singleplayer Mode";
+	setColor(GREEN, BLACK);
+	cout << " Singleplayer Mode ";
+	setColor(GRAY, BLACK);
 	moveCursor(LastRow + 2, col);
-	cout << "Multiplayer Mode";
-	moveCursor(LastRow + pos * 2, col - 2);
-	cout << '>';
-	cout << '\b';
+	cout << " Multiplayer Mode  ";
 	while (true)
 	{
 		char c = _getch();
@@ -916,6 +1142,7 @@ int printGameModeSelection()
 		}
 		else if (c == '\n' || c == '\r' || c == ' ')
 		{
+			setColor(BLACK, WHITE);
 			return pos;
 		}
 		else
@@ -933,10 +1160,29 @@ int printGameModeSelection()
 				break;
 			}
 		}
-		moveCursor(LastRow + pre * 2, col - 2);
-		cout << ' ';
-		moveCursor(LastRow + pos * 2, col - 2);
-		cout << '>';
+		moveCursor(LastRow + pre * 2, col);
+		setColor(GRAY, BLACK);
+		switch (pre)
+		{
+		case 0:
+			cout << " Singleplayer Mode ";
+			break;
+		case 1:
+			cout << " Multiplayer Mode  ";
+			break;
+		}
+		moveCursor(LastRow + pos * 2, col);
+		setColor(GREEN, BLACK);
+		switch (pos)
+		{
+		case 0:
+			cout << " Singleplayer Mode ";
+			break;
+		case 1:
+			cout << " Multiplayer Mode  ";
+			break;
+		}
+		setColor(BLACK, WHITE);
 	}
 }
 
@@ -945,15 +1191,18 @@ int n = 0;
 
 int main()
 {
+	//Set Title
+	SetConsoleTitle(L"TicTacToe - 21127469");	
 	//Disable selection
-	
 	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE); 
+	loadAccounts();
 
 	Starting:
 	int mode = printGameModeSelection();
 	switch (mode)
 	{
 	case 0:
+		printLogin();
 		if (playSingleGame())
 			goto Starting;
 		break;
