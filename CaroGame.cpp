@@ -1082,7 +1082,7 @@ bool printLogin()
 					cout << " Username cannot empty! ";
 					setColor(BLACK, WHITE);
 					break;
-				case 0:
+				case 1:
 					return false;
 				default:
 					moveCursor(LastRow + 12, col + 6);
