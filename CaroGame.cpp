@@ -1853,7 +1853,7 @@ bool playMultiplayerGame() // return true if player want to play again
 	Map FullMap = Map();
 	if (printMultiSetting(FullMap))
 		return true;
-	if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC);
+	if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 
 StartMultiGame:
 	FullMap.Initialize();
@@ -1877,7 +1877,7 @@ int playSingleGame() // return true if player want to play again
 	Map FullMap = Map();
 	if (printSingleSetting(FullMap))
 		return -1;
-	if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC);
+	if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 
 StartSingleGame:
 	FullMap.Initialize();
