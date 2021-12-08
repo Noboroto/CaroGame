@@ -170,23 +170,25 @@ void removeAccount(char name[])
 	saveAccounts();
 }
 
-bool registerAccount(char name[], char pass[])
+int registerAccount(char name[], char pass[])
 {
+	if (strlen(name) <= 0) return -2;
 	for (int i = 0; i < AccountCounter_; ++i)
 	{
 		if (!strcmp(name, Accounts_[i].Username))
-			return false;
+			return 0;
 	}
 	Accounts_[AccountCounter_].setName(name);
 	Accounts_[AccountCounter_].setPassword(pass);
 	ActiveID = AccountCounter_;
 	AccountCounter_++;
 	saveAccounts();
-	return true;
+	return 1;
 }
 
 int loginAccount(char name[], char pass[])
 {
+	if (strlen(name) <= 0) return -2;
 	for (int i = 0; i < AccountCounter_; ++i)
 	{
 		if (!strcmp(name, Accounts_[i].Username))
@@ -277,6 +279,7 @@ void inputCharArray(char c[], const int max, char hide = '\0')
 		x = _getch();
 		if (x == '\n' || x == '\r' || x == '\0')
 		{
+			if (i <= 0) continue;
 			cout << '\n';
 			break;
 		}
@@ -296,7 +299,7 @@ void inputCharArray(char c[], const int max, char hide = '\0')
 			c[i] = x;
 			i++;
 		}
-	} while (x != '\n' && x != '\r' && x != '\0');
+	} while ((x != '\n' && x != '\r' && x != '\0') || i <= 0);
 	if (i > 0)
 		c[i] = '\0';
 	showCursor(false);
@@ -1071,22 +1074,34 @@ bool printLogin()
 				inputCharArray(Password, MAX_PAS + 1, '*');
 				break;
 			case 2:
-				if (registerAccount(Username, Password))
+				switch (registerAccount(Username, Password))
 				{
+				case -2:
+					moveCursor(LastRow + 12, col + 2);
+					setColor(RED, WHITE);
+					cout << " Username cannot empty! ";
+					setColor(BLACK, WHITE);
+					break;
+				case 0:
 					return false;
-				}
-				else
-				{
+				default:
 					moveCursor(LastRow + 12, col + 6);
 					setColor(RED, WHITE);
 					cout << " Username exists! ";
 					setColor(BLACK, WHITE);
+					break;
 				}
 				break;
 			case 3:
 			case 4:
 				switch (loginAccount(Username, Password))
 				{
+				case -2:
+					moveCursor(LastRow + 12, col + 2);
+					setColor(RED, WHITE);
+					cout << " Username cannot empty! ";
+					setColor(BLACK, WHITE);
+					break;
 				case -1:
 					moveCursor(LastRow + 12, col + 2);
 					setColor(RED, WHITE);
@@ -1116,6 +1131,11 @@ bool printLogin()
 			case 5:
 				return true;
 			}
+			if (pos < 2)
+			{
+				pre = pos;
+				pos = abs((pos + 1) % 6);
+			}
 		}
 		else
 		{
@@ -1130,8 +1150,6 @@ bool printLogin()
 				break;
 			case KEY_DOWN:
 				pre = pos;
-				if (pos == 0)
-					pos = 6;
 				pos = abs((pos + 1) % 6);
 				break;
 			}
@@ -1402,6 +1420,11 @@ bool printMultiSetting(Map &Board)
 			case 10:
 				return true;
 			}
+			if (pos < 9)
+			{
+				pre = pos;
+				pos = abs((pos + 1) % 11);
+			}
 		}
 		else
 		{
@@ -1637,6 +1660,11 @@ bool printSingleSetting(Map &Board)
 				return false;
 			case 7:
 				return true;
+			}
+			if (pos < 6)
+			{
+				pre = pos;
+				pos = abs((pos + 1) % 8);
 			}
 		}
 		else
