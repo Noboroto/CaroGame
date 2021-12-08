@@ -31,7 +31,7 @@ const int KEY_RIGHT = 77;
 //LIMITATION
 const int MAX_PAS = 20;
 const int MAX_ROW = 14;
-const int MAX_COL = 18;
+const int MAX_COL = 20;
 const int SPACE_BETWEEN_POINT = 2;
 const int NAME_DISPLAY = 8;
 const int COL_SIZE = 9;
@@ -718,6 +718,13 @@ struct Map
 		int playerid = TurnCounter % 2;
 		if (Grid[row][col].CurrentPlayer != -1)
 			return false;
+		if (Suggestion.Row != -1)
+		{
+			setColor(BLACK, WHITE);
+			Grid[Suggestion.Row][Suggestion.Col].drawPoint();
+			Suggestion = Coordinate(-1, -1);
+			moveTo(0,0);
+		}
 		moveCursor(Grid[row][col].DisplayRow + 2, Grid[row][col].DisplayCol + 2);
 		setColor(BLACK, PlayerColor[playerid]);
 		cout << Player[playerid];
@@ -922,10 +929,12 @@ struct Map
 				case 'm':
 					if (WinnerID != -1)
 						continue;
+					if (Suggestion.Row != -1) continue;
 					Suggestion = getSuggestion(TurnCounter % 2);
 					setColor(BLACK, PlayerColor[TurnCounter % 2]);
 					Grid[Suggestion.Row][Suggestion.Col].drawPoint();
 					setColor(BLACK, WHITE);
+					moveTo(0,0);
 					break;
 				case 'R':
 				case 'r':
@@ -945,6 +954,7 @@ struct Map
 						setColor(BLACK, WHITE);
 						Grid[Suggestion.Row][Suggestion.Col].drawPoint();
 						Suggestion = Coordinate(-1, -1);
+						moveTo(0,0);
 					}
 					Coordinate point = MoveOfAll.pop();
 					Grid[point.Row][point.Col].Initialize();
@@ -966,12 +976,6 @@ struct Map
 			{
 				if (WinnerID != -1)
 					continue;
-				if (Suggestion.Row != -1)
-				{
-					setColor(BLACK, WHITE);
-					Grid[Suggestion.Row][Suggestion.Col].drawPoint();
-					Suggestion = Coordinate(-1, -1);
-				}
 				bool canSelect = selectPoint(CurrentRow, CurrentCol);
 				if (canSelect && UseBot && WinnerID == -1)
 				{
