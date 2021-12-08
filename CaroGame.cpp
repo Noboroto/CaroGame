@@ -1766,8 +1766,8 @@ int printGameModeSelection()
 	moveCursor(LastRow, col - 11);
 	cout << "Use W,A,S,D or ARROW KEY to move around";
 	LastRow++;
-	moveCursor(LastRow, col - 7);
-	cout << "Use ENTER to select or confirm";
+	moveCursor(LastRow, col - 15);
+	cout << "Use ENTER or SPACE to select, edit and confirm";
 	LastRow += 2;
 
 	moveCursor(LastRow, col);
