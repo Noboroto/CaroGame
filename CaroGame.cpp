@@ -378,7 +378,7 @@ struct Point
 		}
 		cout << ' ';
 	}
-	void drawBlankVerticalLin()
+	void drawBlankVerticalLine()
 	{
 		cout << '|';
 		for (int i = 0; i < COL_SIZE; ++i)
@@ -392,11 +392,11 @@ struct Point
 		moveCursor(DisplayRow, DisplayCol);
 		drawHorizontalLine();
 		moveCursor(DisplayRow + 1, DisplayCol);
-		drawBlankVerticalLin();
+		drawBlankVerticalLine();
 		moveCursor(DisplayRow + 2, DisplayCol);
-		drawBlankVerticalLin();
+		drawBlankVerticalLine();
 		moveCursor(DisplayRow + 3, DisplayCol);
-		drawBlankVerticalLin();
+		drawBlankVerticalLine();
 		moveCursor(DisplayRow + 4, DisplayCol);
 		drawHorizontalLine();
 	}
@@ -486,15 +486,6 @@ struct Map
 		CurrentRow = DesRow;
 	}
 
-	void getWiningCounter()
-	{
-		if (min(ColSize, RowSize) == WiningCounter)
-			return;
-		cout << "How many continuous point to win? (from 3 to " << min(ColSize, RowSize) << ") ";
-		int selection = inputPositiveInteger(WiningCounter, min(ColSize, RowSize));
-		WiningCounter = selection;
-	}
-
 	void rewriteName(int id)
 	{
 		int n = strlen(Player[id]);
@@ -557,7 +548,7 @@ struct Map
 		cout << "[E] Exit game";
 	}
 
-	void printMap()
+	void drawMap()
 	{
 		system("cls");
 		showCursor(false);
@@ -929,8 +920,8 @@ struct Map
 				case 'M':
 				case 'm':
 					if (WinnerID != -1)
-						continue;
-					if (Suggestion.Row != -1) continue;
+						break;
+					if (Suggestion.Row != -1) break;
 					Suggestion = getSuggestion(TurnCounter % 2);
 					setColor(BLACK, PlayerColor[TurnCounter % 2]);
 					Grid[Suggestion.Row][Suggestion.Col].drawPoint();
@@ -948,6 +939,8 @@ struct Map
 					return 0;
 				case 'U':
 				case 'u':
+					if (WinnerID != -1)
+						break;
 					if (MoveOfAll.empty())
 						break;
 					if (Suggestion.Row != -1)
@@ -1862,7 +1855,7 @@ bool playMultiplayerGame() // return true if player want to play again
 
 StartMultiGame:
 	FullMap.Initialize();
-	FullMap.printMap();
+	FullMap.drawMap();
 	FullMap.UseBot = false;
 	int result = FullMap.navigateToPoint();
 	switch (result)
@@ -1886,7 +1879,7 @@ int playSingleGame() // return true if player want to play again
 
 StartSingleGame:
 	FullMap.Initialize();
-	FullMap.printMap();
+	FullMap.drawMap();
 	FullMap.UseBot = true;
 	int result = FullMap.navigateToPoint();
 	switch (result)
