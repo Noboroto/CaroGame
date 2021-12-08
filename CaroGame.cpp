@@ -1272,7 +1272,7 @@ bool printMultiSetting(Map &Board)
 	cout << "3";
 	setColor(BLACK, 14);
 	moveCursor(LastRow + 4, col + CURSOR_COL + 6);
-	cout << "moves";
+	cout << "symbols";
 	moveCursor(LastRow + 6, col);
 	cout << "Time restriction (less or equal than " << Board.ColSize * Board.RowSize << ", 0 is off):";
 	moveCursor(LastRow + 6, col + CURSOR_COL + 2);
@@ -1549,7 +1549,7 @@ bool printSingleSetting(Map &Board)
 	cout << "3";
 	setColor(BLACK, 14);
 	moveCursor(LastRow + 4, col + CURSOR_COL + 6);
-	cout << "moves";
+	cout << "symbols";
 	moveCursor(LastRow + 6, col);
 	cout << "Time restriction (less or equal than " << Board.ColSize * Board.RowSize << ", 0 is off):";
 	moveCursor(LastRow + 6, col + CURSOR_COL + 2);
