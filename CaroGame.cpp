@@ -442,6 +442,18 @@ struct Map
 
 	Map()
 	{
+		RowSize = 3;
+		ColSize = 3;
+		WiningCounter = 3;
+		TurnCounter = 0;
+		WinnerID = -1;
+		UseBot = false;
+		BackgroundSound = false;
+		TurnRestriction = 0;
+
+		CurrentCol = 1;
+		CurrentRow = 1;
+
 		for (int i = 0; i < 2; i++)
 		{
 			for (int j = 0; j < NAME_DISPLAY; ++j)
@@ -927,6 +939,12 @@ struct Map
 				case 'u':
 					if (MoveOfAll.empty())
 						break;
+					if (Suggestion.Row != -1)
+					{
+						setColor(BLACK, WHITE);
+						Grid[Suggestion.Row][Suggestion.Col].drawPoint();
+						Suggestion = Coordinate(-1, -1);
+					}
 					Coordinate point = MoveOfAll.pop();
 					Grid[point.Row][point.Col].Initialize();
 					Grid[point.Row][point.Col].drawPoint();
