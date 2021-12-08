@@ -174,6 +174,7 @@ void removeAccount(char name[])
 int registerAccount(char name[], char pass[])
 {
 	if (strlen(name) <= 0) return -2;
+	if (!strcmp(name, "BOT")) return 0;
 	for (int i = 0; i < AccountCounter_; ++i)
 	{
 		if (!strcmp(name, Accounts_[i].Username))
