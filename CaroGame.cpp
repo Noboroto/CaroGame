@@ -2009,6 +2009,7 @@ int n = 0;
 int main()
 {
 	//Disable selection
+	SetConsoleTitle(TEXT("TicTacToe - 21127469"));
 	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE);
 	loadAccounts();
 
