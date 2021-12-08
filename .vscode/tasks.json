@@ -10,6 +10,7 @@
                 "-std=c++14",
                 "${fileDirname}\\${fileBasenameNoExtension}.cpp",
                 "-pipe",
+                "-lwinmm",
                 "-o",
                 "${fileDirname}\\${fileBasenameNoExtension}"
             ],

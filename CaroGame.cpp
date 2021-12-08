@@ -5,6 +5,7 @@
 #include <conio.h>
 #include <ctime>
 #include <cstdlib>
+#include <mmsystem.h>
 
 using std::cin;
 using std::cout;
@@ -30,7 +31,7 @@ const int KEY_RIGHT = 77;
 //LIMITATION
 const int MAX_PAS = 20;
 const int MAX_ROW = 14;
-const int MAX_COL = 18;
+const int MAX_COL = 20;
 const int SPACE_BETWEEN_POINT = 2;
 const int NAME_DISPLAY = 8;
 const int COL_SIZE = 9;
@@ -173,6 +174,7 @@ void removeAccount(char name[])
 int registerAccount(char name[], char pass[])
 {
 	if (strlen(name) <= 0) return -2;
+	if (!strcmp(name, "BOT")) return 0;
 	for (int i = 0; i < AccountCounter_; ++i)
 	{
 		if (!strcmp(name, Accounts_[i].Username))
@@ -376,7 +378,7 @@ struct Point
 		}
 		cout << ' ';
 	}
-	void drawBlankVerticalLin()
+	void drawBlankVerticalLine()
 	{
 		cout << '|';
 		for (int i = 0; i < COL_SIZE; ++i)
@@ -390,11 +392,11 @@ struct Point
 		moveCursor(DisplayRow, DisplayCol);
 		drawHorizontalLine();
 		moveCursor(DisplayRow + 1, DisplayCol);
-		drawBlankVerticalLin();
+		drawBlankVerticalLine();
 		moveCursor(DisplayRow + 2, DisplayCol);
-		drawBlankVerticalLin();
+		drawBlankVerticalLine();
 		moveCursor(DisplayRow + 3, DisplayCol);
-		drawBlankVerticalLin();
+		drawBlankVerticalLine();
 		moveCursor(DisplayRow + 4, DisplayCol);
 		drawHorizontalLine();
 	}
@@ -484,15 +486,6 @@ struct Map
 		CurrentRow = DesRow;
 	}
 
-	void getWiningCounter()
-	{
-		if (min(ColSize, RowSize) == WiningCounter)
-			return;
-		cout << "How many continuous point to win? (from 3 to " << min(ColSize, RowSize) << ") ";
-		int selection = inputPositiveInteger(WiningCounter, min(ColSize, RowSize));
-		WiningCounter = selection;
-	}
-
 	void rewriteName(int id)
 	{
 		int n = strlen(Player[id]);
@@ -555,7 +548,7 @@ struct Map
 		cout << "[E] Exit game";
 	}
 
-	void printMap()
+	void drawMap()
 	{
 		system("cls");
 		showCursor(false);
@@ -717,6 +710,13 @@ struct Map
 		int playerid = TurnCounter % 2;
 		if (Grid[row][col].CurrentPlayer != -1)
 			return false;
+		if (Suggestion.Row != -1)
+		{
+			setColor(BLACK, WHITE);
+			Grid[Suggestion.Row][Suggestion.Col].drawPoint();
+			Suggestion = Coordinate(-1, -1);
+			moveTo(0,0);
+		}
 		moveCursor(Grid[row][col].DisplayRow + 2, Grid[row][col].DisplayCol + 2);
 		setColor(BLACK, PlayerColor[playerid]);
 		cout << Player[playerid];
@@ -920,11 +920,13 @@ struct Map
 				case 'M':
 				case 'm':
 					if (WinnerID != -1)
-						continue;
+						break;
+					if (Suggestion.Row != -1) break;
 					Suggestion = getSuggestion(TurnCounter % 2);
 					setColor(BLACK, PlayerColor[TurnCounter % 2]);
 					Grid[Suggestion.Row][Suggestion.Col].drawPoint();
 					setColor(BLACK, WHITE);
+					moveTo(0,0);
 					break;
 				case 'R':
 				case 'r':
@@ -937,6 +939,8 @@ struct Map
 					return 0;
 				case 'U':
 				case 'u':
+					if (WinnerID != -1)
+						break;
 					if (MoveOfAll.empty())
 						break;
 					if (Suggestion.Row != -1)
@@ -944,6 +948,7 @@ struct Map
 						setColor(BLACK, WHITE);
 						Grid[Suggestion.Row][Suggestion.Col].drawPoint();
 						Suggestion = Coordinate(-1, -1);
+						moveTo(0,0);
 					}
 					Coordinate point = MoveOfAll.pop();
 					Grid[point.Row][point.Col].Initialize();
@@ -965,12 +970,6 @@ struct Map
 			{
 				if (WinnerID != -1)
 					continue;
-				if (Suggestion.Row != -1)
-				{
-					setColor(BLACK, WHITE);
-					Grid[Suggestion.Row][Suggestion.Col].drawPoint();
-					Suggestion = Coordinate(-1, -1);
-				}
 				bool canSelect = selectPoint(CurrentRow, CurrentCol);
 				if (canSelect && UseBot && WinnerID == -1)
 				{
@@ -1266,7 +1265,7 @@ bool printMultiSetting(Map &Board)
 	cout << "3";
 	setColor(BLACK, 14);
 	moveCursor(LastRow + 4, col + CURSOR_COL + 6);
-	cout << "moves";
+	cout << "symbols";
 	moveCursor(LastRow + 6, col);
 	cout << "Time restriction (less or equal than " << Board.ColSize * Board.RowSize << ", 0 is off):";
 	moveCursor(LastRow + 6, col + CURSOR_COL + 2);
@@ -1543,7 +1542,7 @@ bool printSingleSetting(Map &Board)
 	cout << "3";
 	setColor(BLACK, 14);
 	moveCursor(LastRow + 4, col + CURSOR_COL + 6);
-	cout << "moves";
+	cout << "symbols";
 	moveCursor(LastRow + 6, col);
 	cout << "Time restriction (less or equal than " << Board.ColSize * Board.RowSize << ", 0 is off):";
 	moveCursor(LastRow + 6, col + CURSOR_COL + 2);
@@ -1760,8 +1759,8 @@ int printGameModeSelection()
 	moveCursor(LastRow, col - 11);
 	cout << "Use W,A,S,D or ARROW KEY to move around";
 	LastRow++;
-	moveCursor(LastRow, col - 7);
-	cout << "Use ENTER to select or confirm";
+	moveCursor(LastRow, col - 15);
+	cout << "Use ENTER or SPACE to select, edit and confirm";
 	LastRow += 2;
 
 	moveCursor(LastRow, col);
@@ -1852,10 +1851,11 @@ bool playMultiplayerGame() // return true if player want to play again
 	Map FullMap = Map();
 	if (printMultiSetting(FullMap))
 		return true;
+	if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 
 StartMultiGame:
 	FullMap.Initialize();
-	FullMap.printMap();
+	FullMap.drawMap();
 	FullMap.UseBot = false;
 	int result = FullMap.navigateToPoint();
 	switch (result)
@@ -1875,10 +1875,11 @@ int playSingleGame() // return true if player want to play again
 	Map FullMap = Map();
 	if (printSingleSetting(FullMap))
 		return -1;
+	if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 
 StartSingleGame:
 	FullMap.Initialize();
-	FullMap.printMap();
+	FullMap.drawMap();
 	FullMap.UseBot = true;
 	int result = FullMap.navigateToPoint();
 	switch (result)
@@ -2006,10 +2007,12 @@ int n = 0;
 int main()
 {
 	//Disable selection
+	SetConsoleTitle(TEXT("TicTacToe - 21127469"));
 	SetConsoleMode(InHamdle, ~ENABLE_QUICK_EDIT_MODE);
 	loadAccounts();
 
 Starting:
+	PlaySound(NULL, 0, 0);
 	int mode = printGameModeSelection();
 	switch (mode)
 	{
@@ -2045,5 +2048,6 @@ Starting:
 			goto Starting;
 		break;
 	}
+	PlaySound(NULL, 0, 0);
 	return 0;
 }
