@@ -8,7 +8,9 @@
 
 ## Chú ý dành cho các bạn chạy vscode
 
-- Các bạn thay đường dẫn `C:/msys64/ucrt64/bin` trong các file được liệt kê bên dưới thành đường dẫn đến thư mục compiler của các bạn để chạy được nhé. Các thư mục gồm
+- Các bạn thay đường dẫn `C:/msys64/ucrt64/bin` trong các file được liệt kê bên dưới thành đường dẫn đến thư mục compiler của các bạn để chạy được nhé. 
+- **Chú ý:** dấu `\` trong đường dẫn copy từ File Explorer cần thay bằng `\\` hoặc `/`
+- Các thư mục gồm
   - `.vscode\c_cpp_properties.json`
   - `.vscode\launch.json`
   - `.vscode\tasks.json`
