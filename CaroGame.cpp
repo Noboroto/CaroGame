@@ -10,6 +10,7 @@
 using std::cin;
 using std::cout;
 using std::ifstream;
+using std::max;	
 using std::min;
 using std::ofstream;
 
@@ -524,7 +525,7 @@ struct Map
 			setColor(YELLOW, BLACK);
 			row++;
 			moveCursor(row, Notice_Col);
-			cout << "After " << std::max(TurnRestriction - TurnCounter, 0) << " the game will end!";
+			cout << "After " << max(TurnRestriction - TurnCounter, 0) << " the game will end!";
 			setColor(BLACK, WHITE);
 		}
 		row++;
