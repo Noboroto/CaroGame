@@ -14,3 +14,6 @@
   - `.vscode\c_cpp_properties.json`
   - `.vscode\launch.json`
   - `.vscode\tasks.json`
+
+## Compile command
+`g++ -g std=c++14 CaroGame_noSound.cpp -pipe -lwinmm -o CaroGame.exe`

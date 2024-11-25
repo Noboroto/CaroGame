@@ -5,7 +5,6 @@
 #include <conio.h>
 #include <ctime>
 #include <cstdlib>
-#include <mmsystem.h>
 
 using std::cin;
 using std::cout;
@@ -1894,7 +1893,7 @@ bool playMultiplayerGame() // return true if player want to play again
 	Map FullMap = Map();
 	if (printMultiSetting(FullMap))
 		return true;
-	if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
+	// if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 
 StartMultiGame:
 	FullMap.Initialize();
@@ -1918,7 +1917,7 @@ int playSingleGame() // return true if player want to play again
 	Map FullMap = Map();
 	if (printSingleSetting(FullMap))
 		return -1;
-	if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
+	//if (FullMap.BackgroundSound) PlaySound(TEXT("background.wav"), NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 
 StartSingleGame:
 	FullMap.Initialize();
@@ -2055,7 +2054,7 @@ int main()
 	loadAccounts();
 
 Starting:
-	PlaySound(NULL, 0, 0);
+	//PlaySound(NULL, 0, 0);
 	int mode = printGameModeSelection();
 	switch (mode)
 	{
@@ -2091,6 +2090,6 @@ Starting:
 			goto Starting;
 		break;
 	}
-	PlaySound(NULL, 0, 0);
+	//PlaySound(NULL, 0, 0);
 	return 0;
 }
