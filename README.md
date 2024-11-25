@@ -18,3 +18,8 @@
 ## Compile command
 
 `g++ -g -std=c++14 CaroGame_noSound.cpp -pipe -lwinmm -o CaroGame.exe`
+
+## Các file cần thiết
+
+- `Name.txt`: chứa cách vẽ tên chương trình
+- `background.wav`: âm thanh chương trình, phiên bản noSound thì không cần
